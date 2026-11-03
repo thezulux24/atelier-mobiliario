@@ -1,0 +1,716 @@
+{
+  "$schema": "https://cms-studio.latinovation.com/schemas/project-snapshot-v1.json",
+  "pulledAt": "2026-11-03T00:10:14.723Z",
+  "project": {
+    "id": "cmvzxjwiq0004d19yh7cj8yhg",
+    "name": "Atelier · Madera & Materia",
+    "slug": "atelier",
+    "type": "MULTI_PAGE",
+    "framework": "NEXTJS",
+    "status": "PUBLISHED",
+    "productionUrl": "https://atelier.webproai.tech",
+    "previewUrl": "/site/atelier",
+    "publicApiKey": "ltn_pub_atelier_l4j3uu1",
+    "lastPublishedAt": "2026-11-03T00:10:14.216Z"
+  },
+  "tenant": {
+    "id": "cmvzxjvsq0000d19ygpmz8jfn",
+    "name": "Atelier · Madera & Materia",
+    "slug": "atelier-madera-materia",
+    "contactName": "Camila Restrepo",
+    "contactEmail": "cliente@atelier.webproai.tech",
+    "industry": "Mobiliario en Madera & Diseño Interior"
+  },
+  "globalSchema": [
+    {
+      "key": "brandName",
+      "type": "text",
+      "label": "Nombre del estudio"
+    },
+    {
+      "key": "brandMonogram",
+      "type": "text",
+      "label": "Descriptor corto"
+    },
+    {
+      "key": "announcementText",
+      "type": "text",
+      "label": "Aviso superior de entregas"
+    },
+    {
+      "key": "whatsappNumber",
+      "type": "text",
+      "label": "WhatsApp de atención"
+    },
+    {
+      "key": "whatsappPrefill",
+      "type": "textarea",
+      "label": "Mensaje inicial de WhatsApp"
+    },
+    {
+      "key": "primaryColor",
+      "type": "color",
+      "label": "Color de acento (Arcilla)"
+    },
+    {
+      "key": "espressoColor",
+      "type": "color",
+      "label": "Color oscuro (Nogal)"
+    },
+    {
+      "key": "footerAddress",
+      "type": "text",
+      "label": "Dirección y pie de página"
+    }
+  ],
+  "globalData": {
+    "brandName": "Atelier · Madera & Materia",
+    "primaryColor": "#9E4F32",
+    "brandMonogram": "Ebanistería arquitectónica en madera maciza",
+    "espressoColor": "#191614",
+    "footerAddress": "Calle 79B # 7-45, Bogotá D.C. · Taller y Sala de Exhibición",
+    "whatsappNumber": "+573148901234",
+    "whatsappPrefill": "Hola Atelier, me gustaría cotizar una pieza de mobiliario en madera maciza.",
+    "announcementText": "Fabricación bajo pedido en Bogotá · Entregas aseguradas en toda Colombia"
+  },
+  "seoConfig": {
+    "metaTitle": "Atelier · Mobiliario en Madera Maciza y Diseño Interior",
+    "robotsIndex": true,
+    "metaDescription": "Comedores, credenzas, sillas y piezas de autor fabricadas a mano en roble, nogal y teca certificada."
+  },
+  "navigationConfig": {
+    "headerLinks": [
+      {
+        "id": "nav-1",
+        "href": "#oficio",
+        "label": "El oficio",
+        "isVisible": true
+      },
+      {
+        "id": "nav-2",
+        "href": "#maderas",
+        "label": "Maderas",
+        "isVisible": true
+      },
+      {
+        "id": "nav-3",
+        "href": "#coleccion",
+        "label": "Piezas",
+        "isVisible": true
+      },
+      {
+        "id": "nav-4",
+        "href": "#espacios",
+        "label": "Showroom",
+        "isVisible": true
+      },
+      {
+        "id": "nav-5",
+        "href": "#cotizar",
+        "label": "A medida",
+        "isVisible": true
+      }
+    ],
+    "promoBanner": {
+      "title": "Colección Otoño",
+      "ctaHref": "#coleccion",
+      "ctaText": "Ver piezas",
+      "enabled": false,
+      "description": "Nuevas mesas en roble ahumado disponibles en sala"
+    },
+    "headerCtaText": "Agendar visita"
+  },
+  "redirects": [],
+  "domains": [
+    {
+      "domain": "atelier.webproai.tech",
+      "isPrimary": true,
+      "status": "ACTIVE_SSL",
+      "dnsType": "CNAME",
+      "dnsHost": "atelier",
+      "dnsTarget": "edge.latinovation-kvm8.site"
+    }
+  ],
+  "pages": [
+    {
+      "title": "Inicio",
+      "slug": "/",
+      "description": "",
+      "seoTitle": "Inicio",
+      "seoImage": "",
+      "order": 0,
+      "isPublished": true,
+      "sections": [
+        {
+          "key": "hero",
+          "name": "1. Portada Principal",
+          "description": "Presentación de la colección principal con pieza destacada",
+          "order": 0,
+          "isVisible": true,
+          "schema": [
+            {
+              "key": "headline",
+              "type": "text",
+              "label": "Titular principal"
+            },
+            {
+              "key": "subheadline",
+              "type": "textarea",
+              "label": "Párrafo de presentación"
+            },
+            {
+              "key": "primaryCtaText",
+              "type": "text",
+              "label": "Texto botón principal"
+            },
+            {
+              "key": "secondaryCtaText",
+              "type": "text",
+              "label": "Texto botón secundario"
+            },
+            {
+              "key": "heroImage",
+              "type": "image",
+              "label": "Fotografía principal (.webp)"
+            },
+            {
+              "key": "featuredLotName",
+              "type": "text",
+              "label": "Nombre de la pieza en foto"
+            },
+            {
+              "key": "featuredLotAltitude",
+              "type": "text",
+              "label": "Dimensiones de la pieza"
+            },
+            {
+              "key": "featuredLotScore",
+              "type": "text",
+              "label": "Precio de la pieza en foto"
+            },
+            {
+              "key": "featuredLotNotes",
+              "type": "text",
+              "label": "Material y acabado"
+            }
+          ],
+          "data": {
+            "headline": "Mobiliario en madera maciza pensado para habitar el tiempo",
+            "heroImage": "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1600&q=85",
+            "subheadline": "Construimos mesas de comedor, credenzas y sillas mediante ensambles tradicionales de ebanistería, respetando la veta continua de cada árbol y acabando cada superficie a mano con aceites vegetales.",
+            "primaryCtaHref": "#coleccion",
+            "primaryCtaText": "Ver colección de piezas",
+            "featuredLotName": "Mesa de Comedor Aura · 8 puestos",
+            "featuredLotNotes": "Roble blanco macizo con acabado al aceite de linaza",
+            "featuredLotScore": "$4.850.000 COP",
+            "secondaryCtaHref": "#cotizar",
+            "secondaryCtaText": "Cotizar diseño a medida",
+            "featuredLotAltitude": "240 × 110 × 76 cm"
+          }
+        },
+        {
+          "key": "manifiesto_taller",
+          "name": "2. Oficio y Ebanistería",
+          "description": "Filosofía del taller, secado de la madera y cifras reales",
+          "order": 1,
+          "isVisible": true,
+          "schema": [
+            {
+              "key": "heading",
+              "type": "text",
+              "label": "Título de la sección"
+            },
+            {
+              "key": "statement",
+              "type": "textarea",
+              "label": "Historia y método de trabajo"
+            },
+            {
+              "key": "stat1Value",
+              "type": "text",
+              "label": "Cifra 1 (Valor)"
+            },
+            {
+              "key": "stat1Label",
+              "type": "text",
+              "label": "Cifra 1 (Detalle)"
+            },
+            {
+              "key": "stat2Value",
+              "type": "text",
+              "label": "Cifra 2 (Valor)"
+            },
+            {
+              "key": "stat2Label",
+              "type": "text",
+              "label": "Cifra 2 (Detalle)"
+            },
+            {
+              "key": "stat3Value",
+              "type": "text",
+              "label": "Cifra 3 (Valor)"
+            },
+            {
+              "key": "stat3Label",
+              "type": "text",
+              "label": "Cifra 3 (Detalle)"
+            },
+            {
+              "key": "editorialImage",
+              "type": "image",
+              "label": "Fotografía del taller (.webp)"
+            },
+            {
+              "key": "editorialCaption",
+              "type": "text",
+              "label": "Pie de foto"
+            }
+          ],
+          "data": {
+            "heading": "Sin enchapes sintéticos ni producción en serie",
+            "statement": "Trabajamos exclusivamente con tablones enteros de bosques reforestados. Cada pieza reposa en secado controlado antes de entrar a banco de carpintería, garantizando que la madera no se curve ni pierda su estabilidad con el paso de las décadas.",
+            "stat1Label": "Tablones continuos sin aglomerados ni chapillas",
+            "stat1Value": "100% Maciza",
+            "stat2Label": "Garantía estructural en uniones de caja y espiga",
+            "stat2Value": "15 años",
+            "stat3Label": "Tiempo de fabricación artesanal bajo pedido",
+            "stat3Value": "3 a 5 semanas",
+            "editorialImage": "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=1200&q=85",
+            "editorialCaption": "Acabado manual con cera de abejas y aceite natural en nuestro taller de Bogotá."
+          }
+        },
+        {
+          "key": "selector_maderas",
+          "name": "3. Maderas y Acabados",
+          "description": "Comparador interactivo de maderas disponibles para fabricar",
+          "order": 2,
+          "isVisible": true,
+          "schema": [
+            {
+              "key": "heading",
+              "type": "text",
+              "label": "Título del comparador"
+            },
+            {
+              "key": "subheading",
+              "type": "textarea",
+              "label": "Descripción"
+            },
+            {
+              "key": "profileLigeraTitle",
+              "type": "text",
+              "label": "Madera 1: Nombre"
+            },
+            {
+              "key": "profileLigeraAltitude",
+              "type": "text",
+              "label": "Madera 1: Origen y densidad"
+            },
+            {
+              "key": "profileLigeraNotes",
+              "type": "textarea",
+              "label": "Madera 1: Veta y carácter"
+            },
+            {
+              "key": "profileLigeraMethod",
+              "type": "text",
+              "label": "Madera 1: Uso ideal"
+            },
+            {
+              "key": "profileMediaTitle",
+              "type": "text",
+              "label": "Madera 2: Nombre"
+            },
+            {
+              "key": "profileMediaAltitude",
+              "type": "text",
+              "label": "Madera 2: Origen y densidad"
+            },
+            {
+              "key": "profileMediaNotes",
+              "type": "textarea",
+              "label": "Madera 2: Veta y carácter"
+            },
+            {
+              "key": "profileMediaMethod",
+              "type": "text",
+              "label": "Madera 2: Uso ideal"
+            },
+            {
+              "key": "profileOscuraTitle",
+              "type": "text",
+              "label": "Madera 3: Nombre"
+            },
+            {
+              "key": "profileOscuraAltitude",
+              "type": "text",
+              "label": "Madera 3: Origen y densidad"
+            },
+            {
+              "key": "profileOscuraNotes",
+              "type": "textarea",
+              "label": "Madera 3: Veta y carácter"
+            },
+            {
+              "key": "profileOscuraMethod",
+              "type": "text",
+              "label": "Madera 3: Uso ideal"
+            }
+          ],
+          "data": {
+            "heading": "La materia prima define cada espacio",
+            "subheading": "Puedes solicitar cualquiera de nuestras piezas en tres especies de madera seleccionadas por su dureza y belleza natural.",
+            "profileMediaBody": 82,
+            "profileLigeraBody": 88,
+            "profileMediaNotes": "Rica en aceites naturales que la protegen de la humedad y los cambios térmicos. Su tacto sedoso envejece con una pátina cálida inconfundible.",
+            "profileMediaTitle": "Teca Natural Aceitada",
+            "profileOscuraBody": 94,
+            "profileLigeraNotes": "Veta recta y luminosa con poros abiertos sutiles. Aporta amplitud visual y calidez serena en espacios con abundante luz natural.",
+            "profileLigeraTitle": "Roble Blanco Alisado",
+            "profileMediaMethod": "Terrazas cubiertas, salas de estar y poltronas",
+            "profileOscuraNotes": "Catedrales orgánicas con contrastes entre albura cremosa y corazón oscuro. Una madera de presencia arquitectónica para piezas protagonistas.",
+            "profileOscuraTitle": "Nogal Negro Americano",
+            "profileLigeraMethod": "Comedores principales, escritorios y bibliotecas",
+            "profileMediaAcidity": 90,
+            "profileOscuraMethod": "Credenzas de autor, mesas de juntas y cabeceros",
+            "profileLigeraAcidity": 85,
+            "profileMediaAltitude": "Densidad 680 kg/m³ · Tono ámbar dorado",
+            "profileOscuraAcidity": 78,
+            "profileLigeraAltitude": "Densidad 740 kg/m³ · Tono miel pálido",
+            "profileMediaSweetness": 95,
+            "profileOscuraAltitude": "Densidad 660 kg/m³ · Tono chocolate profundo",
+            "profileLigeraSweetness": 92,
+            "profileOscuraSweetness": 88
+          }
+        },
+        {
+          "key": "vitrina_piezas",
+          "name": "4. Catálogo de Piezas",
+          "description": "Vitrina conectada a la colección de mobiliario autogestionable",
+          "order": 3,
+          "isVisible": true,
+          "schema": [
+            {
+              "key": "badgeText",
+              "type": "text",
+              "label": "Subtítulo superior"
+            },
+            {
+              "key": "heading",
+              "type": "text",
+              "label": "Título del catálogo"
+            },
+            {
+              "key": "subheading",
+              "type": "textarea",
+              "label": "Nota sobre medidas personalizadas"
+            }
+          ],
+          "data": {
+            "heading": "Piezas de serie corta hechas a mano",
+            "badgeText": "Colección permanente 2026",
+            "subheading": "Todas las piezas pueden fabricarse en las medidas exactas de tu comedor o sala."
+          }
+        },
+        {
+          "key": "espacios_showroom",
+          "name": "5. Showroom y Taller",
+          "description": "Ubicaciones físicas para conocer las maderas y acabados en persona",
+          "order": 4,
+          "isVisible": true,
+          "schema": [
+            {
+              "key": "heading",
+              "type": "text",
+              "label": "Título de espacios"
+            },
+            {
+              "key": "subheading",
+              "type": "textarea",
+              "label": "Descripción de visita"
+            },
+            {
+              "key": "highlightLabel",
+              "type": "text",
+              "label": "Texto del botón de cita"
+            }
+          ],
+          "data": {
+            "heading": "Conoce la textura de la madera en persona",
+            "subheading": "Recibimos visitas con o sin cita previa para mostrarte muestrarios de madera, textiles en lino belga y piezas terminadas.",
+            "highlightLabel": "Agendar cita con diseñador"
+          }
+        },
+        {
+          "key": "cotizacion_form",
+          "name": "6. Cotización de Piezas a Medida",
+          "description": "Formulario de contacto directo conectado a Leads CRM",
+          "order": 5,
+          "isVisible": true,
+          "schema": [
+            {
+              "key": "heading",
+              "type": "text",
+              "label": "Título de cotización"
+            },
+            {
+              "key": "subheading",
+              "type": "textarea",
+              "label": "Descripción del servicio a medida"
+            },
+            {
+              "key": "locationNote",
+              "type": "text",
+              "label": "Cobertura de envíos"
+            },
+            {
+              "key": "conciergeHours",
+              "type": "text",
+              "label": "Horario de atención"
+            },
+            {
+              "key": "formTitle",
+              "type": "text",
+              "label": "Título del formulario"
+            },
+            {
+              "key": "submitButtonText",
+              "type": "text",
+              "label": "Texto del botón de envío"
+            }
+          ],
+          "data": {
+            "heading": "Cotiza una pieza en las medidas de tu espacio",
+            "formTitle": "Solicitar cotización o agendar visita al showroom",
+            "subheading": "Compártenos qué mueble buscas o las dimensiones de tu comedor. Nuestro equipo de diseño te enviará planos preliminares, muestras de madera y presupuesto detallado.",
+            "locationNote": "Entregas con instalación propia en Bogotá, Sabana, Medellín y Eje Cafetero. Despachos en guacal protegido al resto del país.",
+            "conciergeHours": "Lunes a Sábado · 9:30 a.m. a 6:30 p.m.",
+            "submitButtonText": "Enviar solicitud al taller"
+          }
+        }
+      ]
+    }
+  ],
+  "collections": [
+    {
+      "name": "Colección de Mobiliario",
+      "singularName": "Pieza de Mobiliario",
+      "slug": "piezas-mobiliario",
+      "description": "Catálogo autogestionable de mesas, sillas, credenzas y poltronas",
+      "order": 0,
+      "schema": [
+        {
+          "key": "category",
+          "type": "text",
+          "label": "Categoría (Comedor / Sala / Estudio)"
+        },
+        {
+          "key": "wood",
+          "type": "text",
+          "label": "Madera principal"
+        },
+        {
+          "key": "dimensions",
+          "type": "text",
+          "label": "Dimensiones (Largo × Ancho × Alto)"
+        },
+        {
+          "key": "priceCop",
+          "type": "text",
+          "label": "Precio de venta"
+        },
+        {
+          "key": "leadTime",
+          "type": "text",
+          "label": "Tiempo de entrega"
+        },
+        {
+          "key": "description",
+          "type": "textarea",
+          "label": "Descripción constructiva"
+        },
+        {
+          "key": "imageUrl",
+          "type": "image",
+          "label": "Fotografía de la pieza (.webp)"
+        }
+      ],
+      "items": [
+        {
+          "title": "Mesa de Comedor Aura",
+          "slug": "mesa-comedor-aura",
+          "status": "PUBLISHED",
+          "isFeatured": true,
+          "order": 0,
+          "data": {
+            "wood": "Roble Blanco",
+            "category": "Comedor",
+            "imageUrl": "https://images.unsplash.com/photo-1615066390971-03e4e1c36ddf?auto=format&fit=crop&w=1000&q=85",
+            "leadTime": "Disponible en 3 semanas",
+            "priceCop": "$4.850.000",
+            "dimensions": "240 × 110 × 76 cm",
+            "description": "Sobre de tablones continuos de 4 cm de espesor con bordes suavizados a cepillo manual y patas cilíndricas ensambladas con espiga pasante."
+          }
+        },
+        {
+          "title": "Credenza Baja Monolito",
+          "slug": "credenza-baja-monolito",
+          "status": "PUBLISHED",
+          "isFeatured": true,
+          "order": 1,
+          "data": {
+            "wood": "Nogal Negro",
+            "category": "Sala",
+            "imageUrl": "https://images.unsplash.com/photo-1595428774223-ef52624120d2?auto=format&fit=crop&w=1000&q=85",
+            "leadTime": "Disponible en 4 semanas",
+            "priceCop": "$3.920.000",
+            "dimensions": "200 × 45 × 68 cm",
+            "description": "Cuatro puertas batientes con veta casada en secuencia continua, herrajes ocultos de cierre suave y entrepaños interiores regulables."
+          }
+        },
+        {
+          "title": "Poltrona Lino & Teca",
+          "slug": "poltrona-lino-teca",
+          "status": "PUBLISHED",
+          "isFeatured": true,
+          "order": 2,
+          "data": {
+            "wood": "Teca Natural",
+            "category": "Sala",
+            "imageUrl": "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=1000&q=85",
+            "leadTime": "Entrega inmediata (2 unidades)",
+            "priceCop": "$2.150.000",
+            "dimensions": "74 × 82 × 75 cm",
+            "description": "Estructura inclinada de lectura con descansabrazos tallados y cojinería desenfundable en lino pesado color avena."
+          }
+        },
+        {
+          "title": "Mesa de Centro Bruma",
+          "slug": "mesa-centro-bruma",
+          "status": "PUBLISHED",
+          "isFeatured": false,
+          "order": 3,
+          "data": {
+            "wood": "Roble Blanco",
+            "category": "Sala",
+            "imageUrl": "https://images.unsplash.com/photo-1533090481720-856c6e3c1fdc?auto=format&fit=crop&w=1000&q=85",
+            "leadTime": "Disponible en 2 semanas",
+            "priceCop": "$1.890.000",
+            "dimensions": "130 × 70 × 36 cm",
+            "description": "Proporción baja de inspiración japonesa con bandeja inferior para libros de arte y acabado mate resistente a manchas."
+          }
+        },
+        {
+          "title": "Silla de Comedor Cónsul",
+          "slug": "silla-comedor-consul",
+          "status": "PUBLISHED",
+          "isFeatured": false,
+          "order": 4,
+          "data": {
+            "wood": "Nogal Negro",
+            "category": "Comedor",
+            "imageUrl": "https://images.unsplash.com/photo-1503602642458-232111445657?auto=format&fit=crop&w=1000&q=85",
+            "leadTime": "Disponible bajo pedido",
+            "priceCop": "$980.000",
+            "dimensions": "52 × 54 × 79 cm",
+            "description": "Respaldo curvo moldeado al vapor que abraza la espalda y asiento tapizado en cuero vacuno color silla de montar."
+          }
+        },
+        {
+          "title": "Estantería Abierta Pórtico",
+          "slug": "estanteria-abierta-portico",
+          "status": "PUBLISHED",
+          "isFeatured": false,
+          "order": 5,
+          "data": {
+            "wood": "Teca Natural",
+            "category": "Estudio",
+            "imageUrl": "https://images.unsplash.com/photo-1594620302200-9a762244a156?auto=format&fit=crop&w=1000&q=85",
+            "leadTime": "Disponible en 4 semanas",
+            "priceCop": "$3.450.000",
+            "dimensions": "180 × 38 × 210 cm",
+            "description": "Sistema arquitectónico autoportante que funciona como biblioteca de pared o divisor cálido de ambientes sin restar iluminación."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Showroom y Talleres",
+      "singularName": "Espacio Físico",
+      "slug": "espacios-atelier",
+      "description": "Salas de exhibición y taller abierto a clientes",
+      "order": 1,
+      "schema": [
+        {
+          "key": "city",
+          "type": "text",
+          "label": "Ciudad"
+        },
+        {
+          "key": "address",
+          "type": "text",
+          "label": "Dirección exacta"
+        },
+        {
+          "key": "specialty",
+          "type": "text",
+          "label": "Experiencia en el lugar"
+        },
+        {
+          "key": "hours",
+          "type": "text",
+          "label": "Horario de atención"
+        },
+        {
+          "key": "imageUrl",
+          "type": "image",
+          "label": "Fotografía del espacio (.webp)"
+        }
+      ],
+      "items": [
+        {
+          "title": "Casa Showroom Rosales",
+          "slug": "casa-showroom-rosales",
+          "status": "PUBLISHED",
+          "isFeatured": true,
+          "order": 0,
+          "data": {
+            "city": "Bogotá D.C.",
+            "hours": "Lunes a Sábado: 10:00 a.m. – 7:00 p.m.",
+            "address": "Calle 79B # 7-45 · Barrio El Nogal",
+            "imageUrl": "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=1000&q=85",
+            "specialty": "Exhibición de comedores, salas completas y biblioteca de muestras de madera y lino"
+          }
+        },
+        {
+          "title": "Taller Maestro de Ebanistería",
+          "slug": "taller-maestro-bogota",
+          "status": "PUBLISHED",
+          "isFeatured": true,
+          "order": 1,
+          "data": {
+            "city": "Bogotá D.C.",
+            "hours": "Visitas con cita previa · Lunes a Viernes 9:00 a.m. – 5:00 p.m.",
+            "address": "Carrera 28 # 68-19 · Zona Artesanal",
+            "imageUrl": "https://images.unsplash.com/photo-1581539250439-c96689b516dd?auto=format&fit=crop&w=1000&q=85",
+            "specialty": "Selección en vivo de tablones de roble y nogal junto a nuestros maestros carpinteros"
+          }
+        },
+        {
+          "title": "Estudio Provenza",
+          "slug": "estudio-provenza-medellin",
+          "status": "PUBLISHED",
+          "isFeatured": false,
+          "order": 2,
+          "data": {
+            "city": "Medellín",
+            "hours": "Martes a Sábado: 10:30 a.m. – 6:30 p.m.",
+            "address": "Carrera 35 # 7-82 · El Poblado",
+            "imageUrl": "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1000&q=85",
+            "specialty": "Asesoría de interiorismo residencial y mobiliario para proyectos arquitectónicos"
+          }
+        }
+      ]
+    }
+  ]
+}
