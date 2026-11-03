@@ -96,7 +96,13 @@ function AtelierEmblem({
   );
 }
 
-export function ClientSiteRenderer({ projectSlug = '' }: { projectSlug?: string }) {
+export function ClientSiteRenderer({
+  projectSlug = '',
+  initialPayload = null,
+}: {
+  projectSlug?: string;
+  initialPayload?: any;
+}) {
   const searchParams = useSearchParams();
   const isPreview = searchParams.get('preview') === '1' || searchParams.get('preview') === 'true';
   const isBuilder = searchParams.get('builder') === '1';
@@ -106,8 +112,8 @@ export function ClientSiteRenderer({ projectSlug = '' }: { projectSlug?: string 
   const processRailRef = useRef<HTMLDivElement | null>(null);
   const woodPreviewRef = useRef<HTMLDivElement | null>(null);
 
-  const [payload, setPayload] = useState<any | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [payload, setPayload] = useState<any | null>(initialPayload || null);
+  const [loading, setLoading] = useState<boolean>(!initialPayload);
 
   // Interactive Hero Atmosphere Crossfade
   const [heroSceneIdx, setHeroSceneIdx] = useState(0);
@@ -168,7 +174,9 @@ export function ClientSiteRenderer({ projectSlug = '' }: { projectSlug?: string 
       setLoading(false);
       return;
     }
-    fetchContent();
+    if (!initialPayload || isPreview || isBuilder) {
+      fetchContent();
+    }
     if (!isPreview && !isBuilder) {
       fetch(`${API_BASE}/api/analytics/track`, {
         method: 'POST',
@@ -339,6 +347,37 @@ export function ClientSiteRenderer({ projectSlug = '' }: { projectSlug?: string 
     ];
   }, [payload]);
 
+  const handleAnchorNavigate = (href: string, e?: React.MouseEvent) => {
+    if (!href || !href.startsWith('#') || href.length <= 1) return;
+    const el = typeof document !== 'undefined' ? (document.querySelector(href) as HTMLElement | null) : null;
+    if (el) {
+      if (e) e.preventDefault();
+      gsap.set(el.querySelectorAll('.gsap-fade-up'), { opacity: 1, y: 0 });
+      window.history.pushState(null, '', href);
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(() => ScrollTrigger.refresh(), 400);
+    }
+  };
+
+  // Ensure direct URL hash navigation (#proceso, #espacios, etc.) lands cleanly after mount
+  useEffect(() => {
+    if (loading || typeof window === 'undefined') return;
+    const hash = window.location.hash;
+    if (hash && hash.startsWith('#') && hash.length > 1) {
+      const scrollToHash = () => {
+        const el = document.querySelector(hash) as HTMLElement | null;
+        if (el) {
+          gsap.set(el.querySelectorAll('.gsap-fade-up'), { opacity: 1, y: 0 });
+          el.scrollIntoView({ behavior: 'auto', block: 'start' });
+          ScrollTrigger.refresh();
+        }
+      };
+      scrollToHash();
+      const t = setTimeout(scrollToHash, 120);
+      return () => clearTimeout(t);
+    }
+  }, [loading, orderedSections.length]);
+
   // Master GSAP + ScrollTrigger Choreography
   useGSAP(
     () => {
@@ -382,16 +421,17 @@ export function ClientSiteRenderer({ projectSlug = '' }: { projectSlug?: string 
         if (items.length > 0) {
           gsap.fromTo(
             items,
-            { y: 32, opacity: 0 },
+            { y: 18, opacity: 0.94 },
             {
               y: 0,
               opacity: 1,
-              duration: 0.9,
-              stagger: 0.08,
-              ease: 'power3.out',
+              duration: 0.6,
+              stagger: 0.05,
+              ease: 'power2.out',
+              immediateRender: false,
               scrollTrigger: {
                 trigger: sec,
-                start: 'top 88%',
+                start: 'top 95%',
                 toggleActions: 'play none none none',
                 fastScrollEnd: true,
               },
@@ -1689,7 +1729,7 @@ export function ClientSiteRenderer({ projectSlug = '' }: { projectSlug?: string 
                       alt={st.title}
                       width={700}
                       height={875}
-                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -1766,7 +1806,7 @@ export function ClientSiteRenderer({ projectSlug = '' }: { projectSlug?: string 
                     width={1400}
                     height={875}
                     className="w-full h-full object-cover"
-                    loading="lazy"
+                    decoding="async"
                   />
                 </div>
                 <div className="lg:absolute lg:top-0 lg:right-0 lg:w-[340px] bg-[#FCFBF8] p-6 text-[#171412]">
@@ -1854,7 +1894,7 @@ export function ClientSiteRenderer({ projectSlug = '' }: { projectSlug?: string 
                           src={space.imageUrl}
                           alt={space.title}
                           className="w-full h-full object-cover"
-                          loading="lazy"
+                          decoding="async"
                         />
                       ) : null}
                     </div>
@@ -2256,6 +2296,7 @@ export function ClientSiteRenderer({ projectSlug = '' }: { projectSlug?: string 
                 <a
                   key={lnk.id || lnk.label}
                   href={lnk.href}
+                  onClick={(e) => handleAnchorNavigate(lnk.href, e)}
                   className="hover:text-[#171412] transition-colors"
                 >
                   {lnk.label}
@@ -2266,7 +2307,10 @@ export function ClientSiteRenderer({ projectSlug = '' }: { projectSlug?: string 
           <div className="flex items-center gap-2.5">
             <a
               href={navigation.headerCtaHref || '#cotizar'}
-              onClick={() => trackClick('cta_click')}
+              onClick={(e) => {
+                trackClick('cta_click');
+                handleAnchorNavigate(navigation.headerCtaHref || '#cotizar', e);
+              }}
               style={{ backgroundColor: global.espressoColor || '#171412' }}
               className="h-11 px-5 text-[#F5F2EB] text-[13px] font-medium inline-flex items-center gap-2 hover:opacity-90 transition-opacity"
             >
@@ -2296,7 +2340,10 @@ export function ClientSiteRenderer({ projectSlug = '' }: { projectSlug?: string 
                 <a
                   key={lnk.id || lnk.label}
                   href={lnk.href}
-                  onClick={() => setMobileNavOpen(false)}
+                  onClick={(e) => {
+                    setMobileNavOpen(false);
+                    handleAnchorNavigate(lnk.href, e);
+                  }}
                   className="py-1.5 font-medium hover:text-[#9E5936] transition-colors"
                 >
                   {lnk.label}
