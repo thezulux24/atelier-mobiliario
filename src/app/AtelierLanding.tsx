@@ -47,6 +47,9 @@ function EditableText({
     <Tag
       contentEditable
       suppressContentEditableWarning
+      onClick={(e: React.MouseEvent<HTMLElement>) => {
+        e.stopPropagation();
+      }}
       onBlur={(e: React.FocusEvent<HTMLElement>) => {
         const nextText = e.currentTarget.innerText.trim();
         if (nextText !== value) {
@@ -64,6 +67,124 @@ function EditableText({
     >
       {value}
     </Tag>
+  );
+}
+
+function EditableImage({
+  src,
+  alt,
+  isBuilder,
+  onCommit,
+  className = 'w-full h-full object-cover',
+  width,
+  height,
+  projectId,
+  tenantId,
+  buttonLabel = 'Cambiar foto (.webp)',
+}: {
+  src: string;
+  alt: string;
+  isBuilder: boolean;
+  onCommit: (nextUrl: string) => void;
+  className?: string;
+  width?: number;
+  height?: number;
+  projectId?: string;
+  tenantId?: string;
+  buttonLabel?: string;
+}) {
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  if (!isBuilder) {
+    return (
+      <img
+        src={src}
+        alt={alt}
+        width={width}
+        height={height}
+        decoding="async"
+        className={className}
+      />
+    );
+  }
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (projectId) formData.append('projectId', projectId);
+      if (tenantId) formData.append('tenantId', tenantId);
+      formData.append('category', 'lienzo');
+      const token =
+        typeof window !== 'undefined' ? localStorage.getItem('ltn_cms_token') : '';
+      const res = await fetch(`${API_BASE}/api/media/upload-webp`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const finalUrl = data.url?.startsWith('http')
+          ? data.url
+          : `${API_BASE}${data.url}`;
+        onCommit(finalUrl);
+      }
+    } catch {
+      // Fallback ignored
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  return (
+    <div className="relative w-full h-full group/img">
+      <img
+        src={src}
+        alt={alt}
+        width={width}
+        height={height}
+        decoding="async"
+        className={className}
+      />
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFile}
+        className="hidden"
+      />
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1 opacity-95 group-hover/img:opacity-100"
+      >
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+          className="h-7 px-2.5 bg-[#171412]/90 hover:bg-[#9E5936] text-[#F5F2EB] text-[11px] font-medium inline-flex items-center gap-1.5 transition-colors"
+        >
+          <span>{uploading ? 'Subiendo...' : buttonLabel}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            const nextUrl = window.prompt('URL de la imagen (.webp, .svg, .jpg):', src);
+            if (nextUrl && nextUrl.trim() && nextUrl.trim() !== src) {
+              onCommit(nextUrl.trim());
+            }
+          }}
+          title="Pegar URL de imagen"
+          className="h-7 px-2 bg-[#171412]/90 hover:bg-[#9E5936] text-[#E8DFD1] text-[11px] font-medium transition-colors"
+        >
+          URL
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -219,6 +340,9 @@ export function ClientSiteRenderer({
           if (msg.navigationConfig) {
             next.navigation = msg.navigationConfig;
           }
+          if (msg.collections) {
+            next.collections = msg.collections;
+          }
           return next;
         });
 
@@ -232,9 +356,9 @@ export function ClientSiteRenderer({
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  // Slow Architectural Crossfade on Hero (every 5.8s unless reduced motion or builder)
+  // Slow Architectural Crossfade on Hero (every 5.8s unless reduced motion or builder/preview)
   useEffect(() => {
-    if (isBuilder) return;
+    if (isBuilder || isPreview) return;
     if (
       typeof window !== 'undefined' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -247,11 +371,11 @@ export function ClientSiteRenderer({
       }
     }, 5800);
     return () => clearInterval(timer);
-  }, [isBuilder]);
+  }, [isBuilder, isPreview]);
 
-  // Animate Wood Configurator card when user switches wood or dimension
+  // Animate Wood Configurator card when user switches wood or dimension (disabled in builder/preview)
   useEffect(() => {
-    if (!woodPreviewRef.current) return;
+    if (isBuilder || isPreview || !woodPreviewRef.current) return;
     if (
       typeof window !== 'undefined' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -263,7 +387,7 @@ export function ClientSiteRenderer({
       { opacity: 0.45, y: 10 },
       { opacity: 1, y: 0, duration: 0.55, ease: 'power2.out', overwrite: true },
     );
-  }, [activeWood, tableLengthCm]);
+  }, [activeWood, tableLengthCm, isBuilder, isPreview]);
 
   const orderedSections: any[] = useMemo(() => {
     const rawList =
@@ -378,10 +502,10 @@ export function ClientSiteRenderer({
     }
   }, [loading, orderedSections.length]);
 
-  // Master GSAP + ScrollTrigger Choreography
+  // Master GSAP + ScrollTrigger Choreography (100% disabled in self-management / builder mode)
   useGSAP(
     () => {
-      if (loading || !payload || orderedSections.length === 0) return;
+      if (isBuilder || isPreview || loading || !payload || orderedSections.length === 0) return;
       const prefersReduced =
         typeof window !== 'undefined' &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -477,6 +601,77 @@ export function ClientSiteRenderer({
         '*',
       );
     }
+  };
+
+  const commitGlobal = (fieldKey: string, value: any) => {
+    setPayload((prev: any) =>
+      prev ? { ...prev, global: { ...(prev.global || {}), [fieldKey]: value } } : prev,
+    );
+    emitCanvasAction('INLINE_GLOBAL_CHANGE', { fieldKey, value });
+  };
+
+  const commitNav = (fieldKey: string, value: any) => {
+    setPayload((prev: any) =>
+      prev
+        ? { ...prev, navigation: { ...(prev.navigation || {}), [fieldKey]: value } }
+        : prev,
+    );
+    emitCanvasAction('INLINE_NAV_CHANGE', { fieldKey, value });
+  };
+
+  const commitNavLink = (linkIndex: number, fieldKey: string, value: any) => {
+    setPayload((prev: any) => {
+      if (!prev) return prev;
+      const links = Array.isArray(prev.navigation?.headerLinks)
+        ? [...prev.navigation.headerLinks]
+        : [];
+      if (links[linkIndex]) {
+        links[linkIndex] = { ...links[linkIndex], [fieldKey]: value };
+      }
+      return {
+        ...prev,
+        navigation: { ...(prev.navigation || {}), headerLinks: links },
+      };
+    });
+    emitCanvasAction('INLINE_NAV_CHANGE', { linkIndex, fieldKey, value });
+  };
+
+  const commitPromoBanner = (promoField: string, value: any) => {
+    setPayload((prev: any) => {
+      if (!prev) return prev;
+      const promo = { ...(prev.navigation?.promoBanner || {}), [promoField]: value };
+      return {
+        ...prev,
+        navigation: { ...(prev.navigation || {}), promoBanner: promo },
+      };
+    });
+    emitCanvasAction('INLINE_NAV_CHANGE', { promoField, value });
+  };
+
+  const commitCollectionItem = (
+    collectionSlug: string,
+    itemId: string,
+    fieldKey: string,
+    value: any,
+  ) => {
+    setPayload((prev: any) => {
+      if (!prev) return prev;
+      const list = Array.isArray(prev.collections?.[collectionSlug])
+        ? prev.collections[collectionSlug].map((it: any) =>
+            it.id === itemId ? { ...it, [fieldKey]: value } : it,
+          )
+        : [];
+      return {
+        ...prev,
+        collections: { ...(prev.collections || {}), [collectionSlug]: list },
+      };
+    });
+    emitCanvasAction('INLINE_COLLECTION_ITEM_CHANGE', {
+      collectionSlug,
+      itemId,
+      fieldKey,
+      value,
+    });
   };
 
   const trackClick = (eventType: 'whatsapp_click' | 'cta_click') => {
@@ -657,6 +852,16 @@ export function ClientSiteRenderer({
       });
     };
 
+    const commitWidget = (widgetIndex: number, fieldKey: string, value: any) => {
+      emitCanvasAction('INLINE_WIDGET_CHANGE', {
+        sectionId: sec.id,
+        sectionKey: sec.key,
+        widgetIndex,
+        fieldKey,
+        value,
+      });
+    };
+
     const renderModularWidgetsGrid = () => {
       if (widgets.length === 0) return null;
       const cols = Number(data.columnsCount || 3);
@@ -691,31 +896,54 @@ export function ClientSiteRenderer({
                 <div className="space-y-4">
                   {w.imageUrl ? (
                     <div className="aspect-[16/10] overflow-hidden bg-[#EAE4D8] mb-4">
-                      <img
+                      <EditableImage
                         src={w.imageUrl}
                         alt={w.title || 'Fotografía'}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
+                        isBuilder={isBuilder}
+                        projectId={payload?.project?.id}
+                        onCommit={(url) => commitWidget(wIdx, 'imageUrl', url)}
                       />
                     </div>
                   ) : null}
 
-                  {w.badge ? (
-                    <div className="text-[13px] font-medium opacity-70">{w.badge}</div>
+                  {w.badge || isBuilder ? (
+                    <div className="text-[13px] font-medium opacity-70">
+                      <EditableText
+                        value={w.badge || 'Etiqueta'}
+                        isBuilder={isBuilder}
+                        onCommit={(v) => commitWidget(wIdx, 'badge', v)}
+                      />
+                    </div>
                   ) : null}
 
                   {w.metric ? (
                     <div className="font-serif text-3xl sm:text-4xl font-normal tracking-tight tabular-nums">
-                      {w.metric}
+                      <EditableText
+                        value={w.metric}
+                        isBuilder={isBuilder}
+                        onCommit={(v) => commitWidget(wIdx, 'metric', v)}
+                      />
                     </div>
                   ) : null}
 
                   {w.title ? (
-                    <h3 className="font-serif text-2xl font-normal leading-snug">{w.title}</h3>
+                    <EditableText
+                      as="h3"
+                      value={w.title}
+                      isBuilder={isBuilder}
+                      onCommit={(v) => commitWidget(wIdx, 'title', v)}
+                      className="font-serif text-2xl font-normal leading-snug"
+                    />
                   ) : null}
 
                   {w.body ? (
-                    <p className="text-[15px] opacity-80 leading-relaxed">{w.body}</p>
+                    <EditableText
+                      as="p"
+                      value={w.body}
+                      isBuilder={isBuilder}
+                      onCommit={(v) => commitWidget(wIdx, 'body', v)}
+                      className="text-[15px] opacity-80 leading-relaxed"
+                    />
                   ) : null}
                 </div>
 
@@ -725,7 +953,11 @@ export function ClientSiteRenderer({
                       href={w.ctaHref || '#cotizar'}
                       className="inline-flex items-center gap-2 text-[13px] font-medium hover:opacity-75 transition-opacity"
                     >
-                      <span>{w.ctaText}</span>
+                      <EditableText
+                        value={w.ctaText}
+                        isBuilder={isBuilder}
+                        onCommit={(v) => commitWidget(wIdx, 'ctaText', v)}
+                      />
                       <ArrowUpRight className="w-4 h-4" strokeWidth={1.5} />
                     </a>
                   </div>
@@ -751,22 +983,44 @@ export function ClientSiteRenderer({
           meta:
             data.featuredMeta ||
             'Nogal negro secado al 8% · Ensamble ciego sin herrajes · Acabado al aceite-cera',
+          tab: data.scene1Tab || 'Comedor Monolito',
+          imgKey: 'heroImage',
+          titleKey: 'featuredTitle',
+          labelKey: 'featuredLabel',
+          metaKey: 'featuredMeta',
+          tabKey: 'scene1Tab',
         },
         {
           url:
             data.heroImageAlt2 ||
             'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=2000&q=85',
-          title: 'Credenza Arquitectónica Bóveda · 210 × 46 cm',
-          label: 'Sala de música · El Retiro, Antioquia',
-          meta: 'Roble blanco alisado con frente alistonado continuo y herrajes ocultos',
+          title: data.featuredTitle2 || 'Credenza Arquitectónica Bóveda · 210 × 46 cm',
+          label: data.featuredLabel2 || 'Sala de música · El Retiro, Antioquia',
+          meta:
+            data.featuredMeta2 ||
+            'Roble blanco alisado con frente alistonado continuo y herrajes ocultos',
+          tab: data.scene2Tab || 'Credenza Bóveda',
+          imgKey: 'heroImageAlt2',
+          titleKey: 'featuredTitle2',
+          labelKey: 'featuredLabel2',
+          metaKey: 'featuredMeta2',
+          tabKey: 'scene2Tab',
         },
         {
           url:
             data.heroImageAlt3 ||
             'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=2000&q=85',
-          title: 'Poltrona Baja Calma & Mesa Travertino',
-          label: 'Showroom Principal · Barrio El Nogal, Bogotá',
-          meta: 'Teca certificada FSC torneada a mano y lino belga sin teñir',
+          title: data.featuredTitle3 || 'Poltrona Baja Calma & Mesa Travertino',
+          label: data.featuredLabel3 || 'Showroom Principal · Barrio El Nogal, Bogotá',
+          meta:
+            data.featuredMeta3 ||
+            'Teca certificada FSC torneada a mano y lino belga sin teñir',
+          tab: data.scene3Tab || 'Showroom El Nogal',
+          imgKey: 'heroImageAlt3',
+          titleKey: 'featuredTitle3',
+          labelKey: 'featuredLabel3',
+          metaKey: 'featuredMeta3',
+          tabKey: 'scene3Tab',
         },
       ];
       const currentScene = heroScenes[heroSceneIdx] || heroScenes[0];
@@ -804,7 +1058,7 @@ export function ClientSiteRenderer({
                 />
               </div>
 
-              <div className="lg:col-span-4 space-y-6 lg: pb-1">
+              <div className="lg:col-span-4 space-y-6 lg:pb-1">
                 <EditableText
                   as="p"
                   value={
@@ -819,7 +1073,10 @@ export function ClientSiteRenderer({
                 <div className="gsap-hero-reveal flex flex-wrap items-center gap-3 pt-1">
                   <a
                     href={data.ctaHref || '#coleccion'}
-                    onClick={() => trackClick('cta_click')}
+                    onClick={(e) => {
+                      trackClick('cta_click');
+                      handleAnchorNavigate(data.ctaHref || '#coleccion', e);
+                    }}
                     style={{ backgroundColor: global.espressoColor || '#171412' }}
                     className="h-12 px-7 text-[#F5F2EB] text-[14px] font-medium inline-flex items-center gap-2.5 hover:opacity-90 transition-opacity"
                   >
@@ -833,6 +1090,7 @@ export function ClientSiteRenderer({
 
                   <a
                     href="#maderas"
+                    onClick={(e) => handleAnchorNavigate('#maderas', e)}
                     className="h-12 px-6 bg-[#EAE4D8] hover:bg-[#DFD7C8] text-[#171412] text-[14px] font-medium inline-flex items-center transition-colors"
                   >
                     <EditableText
@@ -847,77 +1105,81 @@ export function ClientSiteRenderer({
 
             {/* Full-Width Architectural Stage with GSAP Parallax & Slow Crossfade */}
             <div className="gsap-hero-stage relative w-full h-[58svh] sm:h-[68svh] lg:h-[76svh] overflow-hidden bg-[#171412]">
-              {heroScenes.map((scene, idx) => (
-                <img
-                  key={scene.url + idx}
-                  src={scene.url}
-                  alt={scene.title}
+              {isBuilder ? (
+                <EditableImage
+                  src={currentScene.url}
+                  alt={currentScene.title}
                   width={2000}
                   height={1200}
-                  className={`gsap-hero-parallax absolute inset-0 w-full h-[116%] -top-[8%] object-cover transition-opacity duration-[1500ms] ease-out ${
-                    heroSceneIdx === idx ? 'opacity-95' : 'opacity-0 pointer-events-none'
-                  }`}
+                  isBuilder={isBuilder}
+                  projectId={payload?.project?.id}
+                  buttonLabel={`Cambiar foto escena ${heroSceneIdx + 1} (.webp)`}
+                  onCommit={(url) => commitField(currentScene.imgKey, url)}
+                  className="w-full h-full object-cover"
                 />
-              ))}
+              ) : (
+                heroScenes.map((scene, idx) => (
+                  <img
+                    key={scene.url + idx}
+                    src={scene.url}
+                    alt={scene.title}
+                    width={2000}
+                    height={1200}
+                    className={`gsap-hero-parallax absolute inset-0 w-full h-[116%] -top-[8%] object-cover transition-opacity duration-[1500ms] ease-out ${
+                      heroSceneIdx === idx ? 'opacity-95' : 'opacity-0 pointer-events-none'
+                    }`}
+                  />
+                ))
+              )}
 
               {/* Subtle neutral corner scrim for caption legibility */}
               <div className="absolute inset-0 bg-[#171412]/25 pointer-events-none" />
 
-              {/* Bottom-left architectural plate caption */}
-              <div className="absolute bottom-5 left-5 sm:bottom-8 sm:left-8 right-5 sm:right-auto max-w-md bg-[#F5F2EB] text-[#171412] p-5 sm:p-6">
+              {/* Bottom-left architectural plate caption (Editable for all 3 scenes) */}
+              <div className="absolute bottom-5 left-5 sm:bottom-8 sm:left-8 right-5 sm:right-auto max-w-md bg-[#F5F2EB] text-[#171412] p-5 sm:p-6 z-10">
                 <div className="text-[13px] text-[#6E6359]">
-                  {heroSceneIdx === 0 ? (
-                    <EditableText
-                      value={currentScene.label}
-                      isBuilder={isBuilder}
-                      onCommit={(v) => commitField('featuredLabel', v)}
-                    />
-                  ) : (
-                    currentScene.label
-                  )}
+                  <EditableText
+                    value={currentScene.label}
+                    isBuilder={isBuilder}
+                    onCommit={(v) => commitField(currentScene.labelKey, v)}
+                  />
                 </div>
                 <div className="font-serif text-xl sm:text-2xl font-normal text-[#171412] mt-1">
-                  {heroSceneIdx === 0 ? (
-                    <EditableText
-                      value={currentScene.title}
-                      isBuilder={isBuilder}
-                      onCommit={(v) => commitField('featuredTitle', v)}
-                    />
-                  ) : (
-                    currentScene.title
-                  )}
+                  <EditableText
+                    value={currentScene.title}
+                    isBuilder={isBuilder}
+                    onCommit={(v) => commitField(currentScene.titleKey, v)}
+                  />
                 </div>
                 <div className="text-[13px] text-[#4A423B] mt-1.5 leading-snug">
-                  {heroSceneIdx === 0 ? (
-                    <EditableText
-                      value={currentScene.meta}
-                      isBuilder={isBuilder}
-                      onCommit={(v) => commitField('featuredMeta', v)}
-                    />
-                  ) : (
-                    currentScene.meta
-                  )}
+                  <EditableText
+                    value={currentScene.meta}
+                    isBuilder={isBuilder}
+                    onCommit={(v) => commitField(currentScene.metaKey, v)}
+                  />
                 </div>
               </div>
 
-              {/* Bottom-right scene selector buttons */}
-              <div className="hidden sm:flex items-center gap-1.5 absolute bottom-8 right-8 bg-[#171412]/85 p-1.5">
-                {['Comedor Monolito', 'Credenza Bóveda', 'Showroom El Nogal'].map(
-                  (label, idx) => (
-                    <button
-                      key={label}
-                      type="button"
-                      onClick={() => setHeroSceneIdx(idx)}
-                      className={`h-9 px-3.5 text-[12px] font-medium transition-colors ${
-                        heroSceneIdx === idx
-                          ? 'bg-[#F5F2EB] text-[#171412]'
-                          : 'text-[#E8DFD1]/80 hover:text-white'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ),
-                )}
+              {/* Bottom-right scene selector buttons (Editable labels) */}
+              <div className="hidden sm:flex items-center gap-1.5 absolute bottom-8 right-8 bg-[#171412]/85 p-1.5 z-10">
+                {heroScenes.map((sc, idx) => (
+                  <button
+                    key={sc.tabKey}
+                    type="button"
+                    onClick={() => setHeroSceneIdx(idx)}
+                    className={`h-9 px-3.5 text-[12px] font-medium transition-colors ${
+                      heroSceneIdx === idx
+                        ? 'bg-[#F5F2EB] text-[#171412]'
+                        : 'text-[#E8DFD1]/80 hover:text-white'
+                    }`}
+                  >
+                    <EditableText
+                      value={sc.tab}
+                      isBuilder={isBuilder}
+                      onCommit={(v) => commitField(sc.tabKey, v)}
+                    />
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -942,6 +1204,7 @@ export function ClientSiteRenderer({
             'https://images.unsplash.com/photo-1546484396-fb3fc6f95f98?auto=format&fit=crop&w=1200&q=85',
           valKey: 'metric1Value',
           lblKey: 'metric1Label',
+          imgKey: 'panel1Image',
           baseGrow: 'lg:flex-[5]',
         },
         {
@@ -954,6 +1217,7 @@ export function ClientSiteRenderer({
             'https://images.unsplash.com/photo-1581539250439-c96689b516dd?auto=format&fit=crop&w=1200&q=85',
           valKey: 'metric2Value',
           lblKey: 'metric2Label',
+          imgKey: 'panel2Image',
           baseGrow: 'lg:flex-[2.5]',
         },
         {
@@ -966,6 +1230,7 @@ export function ClientSiteRenderer({
             'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?auto=format&fit=crop&w=1200&q=85',
           valKey: 'metric3Value',
           lblKey: 'metric3Label',
+          imgKey: 'panel3Image',
           baseGrow: 'lg:flex-[3]',
         },
         {
@@ -978,6 +1243,7 @@ export function ClientSiteRenderer({
             'https://images.unsplash.com/photo-1615066390971-03e4e1c36ddf?auto=format&fit=crop&w=1200&q=85',
           valKey: 'metric4Value',
           lblKey: 'metric4Label',
+          imgKey: 'panel4Image',
           baseGrow: 'lg:flex-[2.5]',
         },
       ];
@@ -1034,26 +1300,35 @@ export function ClientSiteRenderer({
               return (
                 <div
                   key={panel.valKey}
-                  onMouseEnter={() => setActiveStripIdx(idx)}
+                  onMouseEnter={() => {
+                    if (!isBuilder) setActiveStripIdx(idx);
+                  }}
                   onClick={() => setActiveStripIdx(idx)}
                   className={`relative min-h-[280px] lg:min-h-0 overflow-hidden cursor-pointer transition-[flex-grow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                     isExpanded ? 'lg:flex-[6]' : 'lg:flex-[2]'
                   }`}
                 >
-                  <img
+                  <EditableImage
                     src={panel.img}
                     alt={panel.title}
                     width={1200}
                     height={900}
-                    loading="lazy"
-                    className={`w-full h-full object-cover transition-transform duration-700 ${
-                      isExpanded ? 'scale-100 brightness-90' : 'scale-105 brightness-60'
+                    isBuilder={isBuilder}
+                    projectId={payload?.project?.id}
+                    buttonLabel="Cambiar foto (.webp)"
+                    onCommit={(url) => commitField(panel.imgKey, url)}
+                    className={`w-full h-full object-cover ${
+                      isBuilder
+                        ? 'brightness-90'
+                        : `transition-transform duration-700 ${
+                            isExpanded ? 'scale-100 brightness-90' : 'scale-105 brightness-60'
+                          }`
                     }`}
                   />
                   <div className="absolute inset-0 bg-[#171412]/35 pointer-events-none" />
 
-                  <div className="absolute inset-0 p-6 sm:p-8 flex flex-col justify-between text-[#F5F2EB]">
-                    <div className="flex items-center justify-between">
+                  <div className="absolute inset-0 p-6 sm:p-8 flex flex-col justify-between text-[#F5F2EB] pointer-events-none">
+                    <div className="flex items-center justify-between pointer-events-auto">
                       <span className="px-3 py-1 bg-[#171412]/80 text-[13px] font-medium">
                         <EditableText
                           value={panel.title}
@@ -1064,7 +1339,7 @@ export function ClientSiteRenderer({
                     </div>
 
                     <div
-                      className={`max-w-md bg-[#171412]/85 p-5 transition-opacity duration-300 ${
+                      className={`max-w-md bg-[#171412]/85 p-5 transition-opacity duration-300 pointer-events-auto ${
                         isExpanded ? 'opacity-100' : 'opacity-90 lg:opacity-75'
                       }`}
                     >
@@ -1111,6 +1386,7 @@ export function ClientSiteRenderer({
           originKey: 'wood1Origin',
           toneKey: 'wood1Tone',
           finishKey: 'wood1Finish',
+          imageKey: 'wood1Image',
         },
         media: {
           name: data.wood2Name || 'Teca Dorada Certificada',
@@ -1129,6 +1405,7 @@ export function ClientSiteRenderer({
           originKey: 'wood2Origin',
           toneKey: 'wood2Tone',
           finishKey: 'wood2Finish',
+          imageKey: 'wood2Image',
         },
         oscura: {
           name: data.wood3Name || 'Nogal Negro Ahumado',
@@ -1147,6 +1424,7 @@ export function ClientSiteRenderer({
           originKey: 'wood3Origin',
           toneKey: 'wood3Tone',
           finishKey: 'wood3Finish',
+          imageKey: 'wood3Image',
         },
       };
 
@@ -1208,7 +1486,11 @@ export function ClientSiteRenderer({
             <div className="gsap-fade-up grid grid-cols-1 lg:grid-cols-12 gap-6 bg-[#EAE4D8] p-5 sm:p-7">
               <div className="lg:col-span-7 space-y-2.5">
                 <div className="text-[13px] font-medium text-[#4A423B]">
-                  Especie de madera maciza certificada
+                  <EditableText
+                    value={data.speciesLabel || 'Especie de madera maciza certificada'}
+                    isBuilder={isBuilder}
+                    onCommit={(v) => commitField('speciesLabel', v)}
+                  />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   {(['ligera', 'media', 'oscura'] as const).map((keyId) => {
@@ -1229,7 +1511,13 @@ export function ClientSiteRenderer({
                           className="w-4 h-4 shrink-0"
                           style={{ backgroundColor: item.swatch }}
                         />
-                        <span className="text-[13px] font-medium truncate">{item.name}</span>
+                        <span className="text-[13px] font-medium truncate">
+                          <EditableText
+                            value={item.name}
+                            isBuilder={isBuilder}
+                            onCommit={(v) => commitField(item.nameKey, v)}
+                          />
+                        </span>
                       </button>
                     );
                   })}
@@ -1238,7 +1526,11 @@ export function ClientSiteRenderer({
 
               <div className="lg:col-span-5 space-y-2.5">
                 <div className="text-[13px] font-medium text-[#4A423B]">
-                  Escala arquitectónica del sobre (Largo)
+                  <EditableText
+                    value={data.scaleLabel || 'Escala arquitectónica del sobre (Largo)'}
+                    isBuilder={isBuilder}
+                    onCommit={(v) => commitField('scaleLabel', v)}
+                  />
                 </div>
                 <div className="grid grid-cols-3 gap-2.5">
                   {([220, 260, 320] as const).map((len) => (
@@ -1377,18 +1669,22 @@ export function ClientSiteRenderer({
                 <div className="flex flex-wrap items-center justify-between gap-4 pt-1">
                   <a
                     href="#cotizar"
-                    onClick={() => {
+                    onClick={(e) => {
                       setLeadForm((prev) => ({
                         ...prev,
                         preferredWood: currentWood.name,
                         message: `Deseo cotizar una pieza en ${currentWood.name} en formato ${tableLengthCm} × ${widthCm} cm (${seatsLabel}).`,
                       }));
+                      handleAnchorNavigate('#cotizar', e);
                     }}
                     className="h-12 px-7 bg-[#171412] text-[#F5F2EB] text-[14px] font-medium inline-flex items-center gap-2.5 hover:bg-[#2B2521] transition-colors"
                   >
-                    <span>
-                      Solicitar muestras y cotización ({tableLengthCm} cm)
-                    </span>
+                    <EditableText
+                      value={data.configuratorCtaText || 'Solicitar muestras y cotización'}
+                      isBuilder={isBuilder}
+                      onCommit={(v) => commitField('configuratorCtaText', v)}
+                    />
+                    <span className="tabular-nums">({tableLengthCm} cm)</span>
                     <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
                   </a>
                 </div>
@@ -1396,13 +1692,16 @@ export function ClientSiteRenderer({
 
               <div className="lg:col-span-6">
                 <div className="h-full min-h-[340px] lg:min-h-[480px] overflow-hidden bg-[#EAE4D8]">
-                  <img
+                  <EditableImage
                     src={currentWood.image}
                     alt={currentWood.name}
                     width={1200}
                     height={900}
+                    isBuilder={isBuilder}
+                    projectId={payload?.project?.id}
+                    buttonLabel={`Cambiar foto ${currentWood.name} (.webp)`}
+                    onCommit={(url) => commitField(currentWood.imageKey, url)}
                     className="w-full h-full object-cover"
-                    loading="lazy"
                   />
                 </div>
               </div>
@@ -1468,8 +1767,8 @@ export function ClientSiteRenderer({
                 />
               </div>
 
-              {/* Filter by Category / Wood */}
-              <div className="gsap-fade-up flex flex-wrap gap-2">
+              {/* Filter by Category / Wood + Builder Catalog Shortcut */}
+              <div className="gsap-fade-up flex flex-wrap items-center gap-2">
                 {categoriesList.map((cat) => (
                   <button
                     key={cat}
@@ -1484,6 +1783,21 @@ export function ClientSiteRenderer({
                     {cat === 'TODOS' ? 'Todas las piezas' : cat}
                   </button>
                 ))}
+                {isBuilder ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      emitCanvasAction('OPEN_COLLECTION_MANAGER', {
+                        collectionSlug: 'piezas-mobiliario',
+                      });
+                    }}
+                    className="h-10 px-4 bg-[#9E5936] text-[#F5F2EB] text-[12px] font-medium inline-flex items-center gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Añadir / Gestionar piezas</span>
+                  </button>
+                ) : null}
               </div>
             </div>
 
@@ -1502,51 +1816,127 @@ export function ClientSiteRenderer({
                 return (
                   <article
                     key={piece.id || piece.slug}
-                    onClick={() => setSelectedPiece(piece)}
+                    onClick={() => {
+                      if (!isBuilder) setSelectedPiece(piece);
+                    }}
                     className={`gsap-fade-up group cursor-pointer ${spanOnly}`}
                   >
-                    {/* Above top-left corner: Wood species & Lead time */}
+                    {/* Above top-left corner: Wood species & Lead time (100% Inline Editable) */}
                     <div className="flex items-center justify-between text-[13px] text-[#6E6359] mb-2.5">
                       <span>
-                        {piece.category || 'Mobiliario'} · {piece.wood || 'Madera maciza'}
+                        <EditableText
+                          value={piece.category || 'Mobiliario'}
+                          isBuilder={isBuilder}
+                          onCommit={(v) =>
+                            commitCollectionItem('piezas-mobiliario', piece.id, 'category', v)
+                          }
+                        />{' '}
+                        ·{' '}
+                        <EditableText
+                          value={piece.wood || 'Madera maciza'}
+                          isBuilder={isBuilder}
+                          onCommit={(v) =>
+                            commitCollectionItem('piezas-mobiliario', piece.id, 'wood', v)
+                          }
+                        />
                       </span>
-                      <span>{piece.leadTime || 'Bajo pedido'}</span>
+                      <EditableText
+                        value={piece.leadTime || 'Bajo pedido'}
+                        isBuilder={isBuilder}
+                        onCommit={(v) =>
+                          commitCollectionItem('piezas-mobiliario', piece.id, 'leadTime', v)
+                        }
+                      />
                     </div>
 
                     {/* Square-cornered architectural frame */}
                     <div className={`${aspectOnly} w-full overflow-hidden bg-[#EAE4D8]`}>
                       {piece.imageUrl ? (
-                        <img
+                        <EditableImage
                           src={piece.imageUrl}
                           alt={piece.title}
                           width={1200}
                           height={900}
-                          className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700 ease-out"
-                          loading="lazy"
+                          isBuilder={isBuilder}
+                          projectId={payload?.project?.id}
+                          buttonLabel="Cambiar foto pieza (.webp)"
+                          onCommit={(url) =>
+                            commitCollectionItem('piezas-mobiliario', piece.id, 'imageUrl', url)
+                          }
+                          className={`w-full h-full object-cover ${
+                            isBuilder
+                              ? ''
+                              : 'group-hover:scale-[1.03] transition-transform duration-700 ease-out'
+                          }`}
                         />
                       ) : null}
                     </div>
 
-                    {/* Beneath bottom-left corner: Title, Dimensions & Price */}
+                    {/* Beneath bottom-left corner: Title, Dimensions & Price (100% Inline Editable) */}
                     <div className="pt-4 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
                       <div>
-                        <h3 className="font-serif text-2xl sm:text-[26px] font-normal text-[#171412] group-hover:text-[#9E5936] transition-colors">
-                          {piece.title}
-                        </h3>
+                        <EditableText
+                          as="h3"
+                          value={piece.title}
+                          isBuilder={isBuilder}
+                          onCommit={(v) =>
+                            commitCollectionItem('piezas-mobiliario', piece.id, 'title', v)
+                          }
+                          className="font-serif text-2xl sm:text-[26px] font-normal text-[#171412] group-hover:text-[#9E5936] transition-colors"
+                        />
                         <p className="text-[14px] text-[#5C5349] mt-1 max-w-[52ch]">
-                          {piece.dimensions ? `${piece.dimensions} — ` : ''}
-                          {piece.description}
+                          {piece.dimensions || isBuilder ? (
+                            <>
+                              <EditableText
+                                value={piece.dimensions || 'Medidas a elección'}
+                                isBuilder={isBuilder}
+                                onCommit={(v) =>
+                                  commitCollectionItem(
+                                    'piezas-mobiliario',
+                                    piece.id,
+                                    'dimensions',
+                                    v,
+                                  )
+                                }
+                              />
+                              {' — '}
+                            </>
+                          ) : null}
+                          <EditableText
+                            value={piece.description || ''}
+                            isBuilder={isBuilder}
+                            onCommit={(v) =>
+                              commitCollectionItem(
+                                'piezas-mobiliario',
+                                piece.id,
+                                'description',
+                                v,
+                              )
+                            }
+                          />
                         </p>
                       </div>
 
                       <div className="shrink-0 flex items-center gap-3 pt-1 sm:pt-0">
-                        <span className="font-serif text-xl text-[#171412] tabular-nums">
-                          {piece.priceCop || 'A medida'}
-                        </span>
-                        <span className="inline-flex items-center gap-1 text-[13px] font-medium text-[#9E5936]">
+                        <EditableText
+                          value={piece.priceCop || 'A medida'}
+                          isBuilder={isBuilder}
+                          onCommit={(v) =>
+                            commitCollectionItem('piezas-mobiliario', piece.id, 'priceCop', v)
+                          }
+                          className="font-serif text-xl text-[#171412] tabular-nums"
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedPiece(piece);
+                          }}
+                          className="inline-flex items-center gap-1 text-[13px] font-medium text-[#9E5936]"
+                        >
                           <span>Ficha</span>
                           <ArrowUpRight className="w-3.5 h-3.5" />
-                        </span>
+                        </button>
                       </div>
                     </div>
                   </article>
@@ -1575,6 +1965,7 @@ export function ClientSiteRenderer({
             'https://images.unsplash.com/photo-1546484396-fb3fc6f95f98?auto=format&fit=crop&w=900&q=85',
           titleKey: 'step1Title',
           bodyKey: 'step1Body',
+          imgKey: 'step1Image',
           topGap: 'pt-4',
         },
         {
@@ -1587,6 +1978,7 @@ export function ClientSiteRenderer({
             'https://images.unsplash.com/photo-1581539250439-c96689b516dd?auto=format&fit=crop&w=900&q=85',
           titleKey: 'step2Title',
           bodyKey: 'step2Body',
+          imgKey: 'step2Image',
           topGap: 'pt-12 lg:pt-16',
         },
         {
@@ -1599,6 +1991,7 @@ export function ClientSiteRenderer({
             'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?auto=format&fit=crop&w=900&q=85',
           titleKey: 'step3Title',
           bodyKey: 'step3Body',
+          imgKey: 'step3Image',
           topGap: 'pt-6',
         },
         {
@@ -1611,6 +2004,7 @@ export function ClientSiteRenderer({
             'https://images.unsplash.com/photo-1615066390971-03e4e1c36ddf?auto=format&fit=crop&w=900&q=85',
           titleKey: 'step4Title',
           bodyKey: 'step4Body',
+          imgKey: 'step4Image',
           topGap: 'pt-14 lg:pt-20',
         },
         {
@@ -1623,6 +2017,7 @@ export function ClientSiteRenderer({
             'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=900&q=85',
           titleKey: 'step5Title',
           bodyKey: 'step5Body',
+          imgKey: 'step5Image',
           topGap: 'pt-8',
         },
       ];
@@ -1724,12 +2119,15 @@ export function ClientSiteRenderer({
 
                 <div className={st.topGap}>
                   <div className="aspect-[4/5] w-full overflow-hidden bg-[#D8D0C1]">
-                    <img
+                    <EditableImage
                       src={st.img}
                       alt={st.title}
                       width={700}
                       height={875}
-                      decoding="async"
+                      isBuilder={isBuilder}
+                      projectId={payload?.project?.id}
+                      buttonLabel="Cambiar foto etapa (.webp)"
+                      onCommit={(url) => commitField(st.imgKey, url)}
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -1800,25 +2198,74 @@ export function ClientSiteRenderer({
             <div className="gsap-fade-up grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               <div className="lg:col-span-8 relative">
                 <div className="aspect-[16/10] w-full overflow-hidden bg-[#EAE4D8]">
-                  <img
+                  <EditableImage
                     src={mainSpace.imageUrl}
                     alt={mainSpace.title}
                     width={1400}
                     height={875}
+                    isBuilder={isBuilder}
+                    projectId={payload?.project?.id}
+                    buttonLabel="Cambiar foto showroom (.webp)"
+                    onCommit={(url) => {
+                      if (mainSpace.id) {
+                        commitCollectionItem('espacios-atelier', mainSpace.id, 'imageUrl', url);
+                      } else {
+                        commitField('mainSpaceImage', url);
+                      }
+                    }}
                     className="w-full h-full object-cover"
-                    decoding="async"
                   />
                 </div>
-                <div className="lg:absolute lg:top-0 lg:right-0 lg:w-[340px] bg-[#FCFBF8] p-6 text-[#171412]">
+                <div className="lg:absolute lg:top-0 lg:right-0 lg:w-[340px] bg-[#FCFBF8] p-6 text-[#171412] z-10">
                   <div className="text-[13px] font-medium text-[#9E5936]">
-                    {mainSpace.city} · Sede Principal
+                    <EditableText
+                      value={mainSpace.city}
+                      isBuilder={isBuilder}
+                      onCommit={(v) =>
+                        mainSpace.id
+                          ? commitCollectionItem('espacios-atelier', mainSpace.id, 'city', v)
+                          : commitField('mainSpaceCity', v)
+                      }
+                    />{' '}
+                    ·{' '}
+                    <EditableText
+                      value={data.sedeBadge || 'Sede Principal'}
+                      isBuilder={isBuilder}
+                      onCommit={(v) => commitField('sedeBadge', v)}
+                    />
                   </div>
-                  <h3 className="font-serif text-2xl font-normal mt-1">{mainSpace.title}</h3>
-                  <p className="text-[14px] text-[#4A423B] leading-relaxed mt-2">
-                    {mainSpace.specialty}
-                  </p>
+                  <EditableText
+                    as="h3"
+                    value={mainSpace.title}
+                    isBuilder={isBuilder}
+                    onCommit={(v) =>
+                      mainSpace.id
+                        ? commitCollectionItem('espacios-atelier', mainSpace.id, 'title', v)
+                        : commitField('mainSpaceTitle', v)
+                    }
+                    className="font-serif text-2xl font-normal mt-1"
+                  />
+                  <EditableText
+                    as="p"
+                    value={mainSpace.specialty}
+                    isBuilder={isBuilder}
+                    onCommit={(v) =>
+                      mainSpace.id
+                        ? commitCollectionItem('espacios-atelier', mainSpace.id, 'specialty', v)
+                        : commitField('mainSpaceSpecialty', v)
+                    }
+                    className="text-[14px] text-[#4A423B] leading-relaxed mt-2"
+                  />
                   <div className="text-[13px] font-medium text-[#171412] mt-3">
-                    {mainSpace.address}
+                    <EditableText
+                      value={mainSpace.address}
+                      isBuilder={isBuilder}
+                      onCommit={(v) =>
+                        mainSpace.id
+                          ? commitCollectionItem('espacios-atelier', mainSpace.id, 'address', v)
+                          : commitField('mainSpaceAddress', v)
+                      }
+                    />
                   </div>
                 </div>
               </div>
@@ -1827,10 +2274,18 @@ export function ClientSiteRenderer({
                 {/* Architectural Floor Plan SVG Tile */}
                 <div className="bg-[#171412] text-[#F5F2EB] p-8 aspect-[4/3] flex flex-col justify-between">
                   <div className="flex items-center justify-between text-[13px] text-[#C4B9AA]">
-                    <span>Planta arquitectónica · Taller &amp; Sala</span>
+                    <EditableText
+                      value={data.planTitle || 'Planta arquitectónica · Taller & Sala'}
+                      isBuilder={isBuilder}
+                      onCommit={(v) => commitField('planTitle', v)}
+                    />
                     <span className="inline-flex items-center gap-1.5 text-[#F5F2EB]">
                       <span className="w-2 h-2 rounded-full bg-[#9E5936]" />
-                      <span>Cita previa</span>
+                      <EditableText
+                        value={data.planStatus || 'Cita previa'}
+                        isBuilder={isBuilder}
+                        onCommit={(v) => commitField('planStatus', v)}
+                      />
                     </span>
                   </div>
 
@@ -1854,33 +2309,88 @@ export function ClientSiteRenderer({
                   </svg>
 
                   <div className="text-[13px] text-[#C4B9AA]">
-                    Muestroteca de maderas, linos y piedra natural disponible para préstamo a estudios de arquitectura.
+                    <EditableText
+                      value={
+                        data.planDescription ||
+                        'Muestroteca de maderas, linos y piedra natural disponible para préstamo a estudios de arquitectura.'
+                      }
+                      isBuilder={isBuilder}
+                      onCommit={(v) => commitField('planDescription', v)}
+                    />
                   </div>
                 </div>
 
-                {/* 2x2 Architectural Facts */}
+                {/* 2x2 Architectural Facts (100% Inline Editable) */}
                 <div className="grid grid-cols-2 gap-4 bg-[#EAE4D8] p-6 text-[14px]">
                   <div>
-                    <div className="text-[#6E6359]">Altitud taller</div>
-                    <div className="font-medium text-[#171412] mt-0.5">2.600 m · Bogotá</div>
+                    <div className="text-[#6E6359]">
+                      <EditableText
+                        value={data.fact1Label || 'Altitud taller'}
+                        isBuilder={isBuilder}
+                        onCommit={(v) => commitField('fact1Label', v)}
+                      />
+                    </div>
+                    <div className="font-medium text-[#171412] mt-0.5">
+                      <EditableText
+                        value={data.fact1Value || '2.600 m · Bogotá'}
+                        isBuilder={isBuilder}
+                        onCommit={(v) => commitField('fact1Value', v)}
+                      />
+                    </div>
                   </div>
                   <div>
-                    <div className="text-[#6E6359]">Secado en horno</div>
-                    <div className="font-medium text-[#171412] mt-0.5">8% – 10% humedad</div>
+                    <div className="text-[#6E6359]">
+                      <EditableText
+                        value={data.fact2Label || 'Secado en horno'}
+                        isBuilder={isBuilder}
+                        onCommit={(v) => commitField('fact2Label', v)}
+                      />
+                    </div>
+                    <div className="font-medium text-[#171412] mt-0.5">
+                      <EditableText
+                        value={data.fact2Value || '8% – 10% humedad'}
+                        isBuilder={isBuilder}
+                        onCommit={(v) => commitField('fact2Value', v)}
+                      />
+                    </div>
                   </div>
                   <div>
-                    <div className="text-[#6E6359]">Despachos</div>
-                    <div className="font-medium text-[#171412] mt-0.5">Toda Colombia</div>
+                    <div className="text-[#6E6359]">
+                      <EditableText
+                        value={data.fact3Label || 'Despachos'}
+                        isBuilder={isBuilder}
+                        onCommit={(v) => commitField('fact3Label', v)}
+                      />
+                    </div>
+                    <div className="font-medium text-[#171412] mt-0.5">
+                      <EditableText
+                        value={data.fact3Value || 'Toda Colombia'}
+                        isBuilder={isBuilder}
+                        onCommit={(v) => commitField('fact3Value', v)}
+                      />
+                    </div>
                   </div>
                   <div>
-                    <div className="text-[#6E6359]">Garantía</div>
-                    <div className="font-medium text-[#171412] mt-0.5">25 años en uniones</div>
+                    <div className="text-[#6E6359]">
+                      <EditableText
+                        value={data.fact4Label || 'Garantía'}
+                        isBuilder={isBuilder}
+                        onCommit={(v) => commitField('fact4Label', v)}
+                      />
+                    </div>
+                    <div className="font-medium text-[#171412] mt-0.5">
+                      <EditableText
+                        value={data.fact4Value || '25 años en uniones'}
+                        isBuilder={isBuilder}
+                        onCommit={(v) => commitField('fact4Value', v)}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Remaining Showrooms & Workshops from CMS Collection */}
+            {/* Remaining Showrooms & Workshops from CMS Collection (100% Inline Editable) */}
             {spacesCollection.length > 1 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
                 {spacesCollection.slice(1).map((space: any) => (
@@ -1890,29 +2400,68 @@ export function ClientSiteRenderer({
                   >
                     <div className="sm:col-span-5 aspect-[4/3] sm:aspect-auto bg-[#EAE4D8]">
                       {space.imageUrl ? (
-                        <img
+                        <EditableImage
                           src={space.imageUrl}
                           alt={space.title}
+                          isBuilder={isBuilder}
+                          projectId={payload?.project?.id}
+                          buttonLabel="Cambiar foto sede (.webp)"
+                          onCommit={(url) =>
+                            commitCollectionItem('espacios-atelier', space.id, 'imageUrl', url)
+                          }
                           className="w-full h-full object-cover"
-                          decoding="async"
                         />
                       ) : null}
                     </div>
                     <div className="sm:col-span-7 p-6 sm:p-7 flex flex-col justify-between space-y-4">
                       <div>
                         <div className="text-[13px] font-medium text-[#9E5936]">
-                          {space.city}
+                          <EditableText
+                            value={space.city}
+                            isBuilder={isBuilder}
+                            onCommit={(v) =>
+                              commitCollectionItem('espacios-atelier', space.id, 'city', v)
+                            }
+                          />
                         </div>
-                        <h3 className="font-serif text-2xl font-normal text-[#171412] mt-1">
-                          {space.title}
-                        </h3>
-                        <p className="text-[14px] text-[#4A423B] leading-relaxed mt-2">
-                          {space.specialty}
-                        </p>
+                        <EditableText
+                          as="h3"
+                          value={space.title}
+                          isBuilder={isBuilder}
+                          onCommit={(v) =>
+                            commitCollectionItem('espacios-atelier', space.id, 'title', v)
+                          }
+                          className="font-serif text-2xl font-normal text-[#171412] mt-1"
+                        />
+                        <EditableText
+                          as="p"
+                          value={space.specialty}
+                          isBuilder={isBuilder}
+                          onCommit={(v) =>
+                            commitCollectionItem('espacios-atelier', space.id, 'specialty', v)
+                          }
+                          className="text-[14px] text-[#4A423B] leading-relaxed mt-2"
+                        />
                       </div>
                       <div className="space-y-1 text-[13px] text-[#171412]">
-                        <div className="font-medium">{space.address}</div>
-                        <div className="text-[#6E6359]">{space.hours}</div>
+                        <div className="font-medium">
+                          <EditableText
+                            value={space.address}
+                            isBuilder={isBuilder}
+                            onCommit={(v) =>
+                              commitCollectionItem('espacios-atelier', space.id, 'address', v)
+                            }
+                          />
+                        </div>
+                        <div className="text-[#6E6359]">
+                          <EditableText
+                            value={space.hours}
+                            isBuilder={isBuilder}
+                            onCommit={(v) =>
+                              commitCollectionItem('espacios-atelier', space.id, 'hours', v)
+                            }
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -2014,7 +2563,14 @@ export function ClientSiteRenderer({
                     onClick={() => trackClick('whatsapp_click')}
                     className="inline-flex items-center gap-2 text-[14px] font-medium text-[#E8DFD1] underline underline-offset-4 hover:text-white"
                   >
-                    <span>Hablar directamente con un ebanista por WhatsApp</span>
+                    <EditableText
+                      value={
+                        data.whatsappCtaText ||
+                        'Hablar directamente con un ebanista por WhatsApp'
+                      }
+                      isBuilder={isBuilder}
+                      onCommit={(v) => commitField('whatsappCtaText', v)}
+                    />
                     <ArrowUpRight className="w-4 h-4" />
                   </a>
                 </div>
@@ -2044,7 +2600,11 @@ export function ClientSiteRenderer({
                 ) : (
                   <form onSubmit={handleLeadSubmit} className="space-y-5">
                     <div className="font-serif text-2xl font-normal text-[#171412] pb-1">
-                      Ficha de encargo o visita privada
+                      <EditableText
+                        value={data.formHeading || 'Ficha de encargo o visita privada'}
+                        isBuilder={isBuilder}
+                        onCommit={(v) => commitField('formHeading', v)}
+                      />
                     </div>
 
                     {leadError ? (
@@ -2059,7 +2619,11 @@ export function ClientSiteRenderer({
                           htmlFor="lead-name"
                           className="block text-[13px] font-medium text-[#3F3831] mb-1.5"
                         >
-                          Nombre completo
+                          <EditableText
+                            value={data.labelName || 'Nombre completo'}
+                            isBuilder={isBuilder}
+                            onCommit={(v) => commitField('labelName', v)}
+                          />
                         </label>
                         <input
                           id="lead-name"
@@ -2079,7 +2643,11 @@ export function ClientSiteRenderer({
                           htmlFor="lead-email"
                           className="block text-[13px] font-medium text-[#3F3831] mb-1.5"
                         >
-                          Correo electrónico
+                          <EditableText
+                            value={data.labelEmail || 'Correo electrónico'}
+                            isBuilder={isBuilder}
+                            onCommit={(v) => commitField('labelEmail', v)}
+                          />
                         </label>
                         <input
                           id="lead-email"
@@ -2101,7 +2669,11 @@ export function ClientSiteRenderer({
                           htmlFor="lead-phone"
                           className="block text-[13px] font-medium text-[#3F3831] mb-1.5"
                         >
-                          WhatsApp / Teléfono
+                          <EditableText
+                            value={data.labelPhone || 'WhatsApp / Teléfono'}
+                            isBuilder={isBuilder}
+                            onCommit={(v) => commitField('labelPhone', v)}
+                          />
                         </label>
                         <input
                           id="lead-phone"
@@ -2121,7 +2693,11 @@ export function ClientSiteRenderer({
                           htmlFor="lead-city"
                           className="block text-[13px] font-medium text-[#3F3831] mb-1.5"
                         >
-                          Ciudad de entrega
+                          <EditableText
+                            value={data.labelCity || 'Ciudad de entrega'}
+                            isBuilder={isBuilder}
+                            onCommit={(v) => commitField('labelCity', v)}
+                          />
                         </label>
                         <select
                           id="lead-city"
@@ -2146,7 +2722,11 @@ export function ClientSiteRenderer({
                           htmlFor="lead-wood"
                           className="block text-[13px] font-medium text-[#3F3831] mb-1.5"
                         >
-                          Madera preferida
+                          <EditableText
+                            value={data.labelWood || 'Madera preferida'}
+                            isBuilder={isBuilder}
+                            onCommit={(v) => commitField('labelWood', v)}
+                          />
                         </label>
                         <select
                           id="lead-wood"
@@ -2173,7 +2753,14 @@ export function ClientSiteRenderer({
                         htmlFor="lead-message"
                         className="block text-[13px] font-medium text-[#3F3831] mb-1.5"
                       >
-                        Pieza, dimensiones aproximadas o detalles del espacio
+                        <EditableText
+                          value={
+                            data.labelMessage ||
+                            'Pieza, dimensiones aproximadas o detalles del espacio'
+                          }
+                          isBuilder={isBuilder}
+                          onCommit={(v) => commitField('labelMessage', v)}
+                        />
                       </label>
                       <textarea
                         id="lead-message"
@@ -2193,11 +2780,15 @@ export function ClientSiteRenderer({
                       style={{ backgroundColor: global.primaryColor || '#9E5936' }}
                       className="w-full h-12 text-[#F5F2EB] text-[14px] font-medium hover:opacity-95 transition-opacity flex items-center justify-center gap-2"
                     >
-                      <span>
-                        {submittingLead
-                          ? 'Registrando encargo...'
-                          : data.submitButtonText || 'Enviar solicitud al taller'}
-                      </span>
+                      {submittingLead ? (
+                        <span>Registrando encargo...</span>
+                      ) : (
+                        <EditableText
+                          value={data.submitButtonText || 'Enviar solicitud al taller'}
+                          isBuilder={isBuilder}
+                          onCommit={(v) => commitField('submitButtonText', v)}
+                        />
+                      )}
                       <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
                     </button>
                   </form>
@@ -2251,57 +2842,82 @@ export function ClientSiteRenderer({
       ref={rootRef}
       className="min-h-[100svh] bg-[#F5F2EB] text-[#171412] flex flex-col selection:bg-[#9E5936] selection:text-white"
     >
-      {/* Top Announcement Bar */}
-      {global.announcementText ? (
+      {/* Top Announcement Bar (100% Inline Editable) */}
+      {global.announcementText || isBuilder ? (
         <div
           style={{ backgroundColor: global.espressoColor || '#171412' }}
           className="text-[#E8DFD1] text-[13px] py-2.5 px-5 text-center"
         >
-          {global.announcementText}
+          <EditableText
+            value={
+              global.announcementText ||
+              'Ebanistería bajo pedido en Bogotá · Envíos asegurados en guante blanco a toda Colombia'
+            }
+            isBuilder={isBuilder}
+            onCommit={(v) => commitGlobal('announcementText', v)}
+          />
         </div>
       ) : null}
 
-      {/* Minimal Architectural Header with Custom CMS Logo */}
+      {/* Minimal Architectural Header with Custom CMS Logo (100% Inline Editable) */}
       <header className="sticky top-0 z-30 bg-[#F5F2EB]/95">
         <div className="max-w-[1440px] mx-auto h-20 px-5 sm:px-10 lg:px-14 flex items-center justify-between gap-6">
-          <a href="#top" className="flex items-center gap-3.5">
+          <div className="flex items-center gap-3.5">
             {global.logoUrl ? (
-              <img
-                src={global.logoUrl}
-                alt={global.brandName || 'Atelier'}
-                className="h-10 w-auto object-contain"
-              />
+              <div className="h-10 w-auto flex items-center">
+                <EditableImage
+                  src={global.logoUrl}
+                  alt={global.brandName || 'Atelier'}
+                  isBuilder={isBuilder}
+                  projectId={payload?.project?.id}
+                  buttonLabel="Logo"
+                  onCommit={(url) => commitGlobal('logoUrl', url)}
+                  className="h-10 w-auto object-contain"
+                />
+              </div>
             ) : (
               <>
                 <AtelierEmblem className="w-9 h-9" />
                 <div>
                   <div className="font-serif text-xl tracking-[0.14em] text-[#171412] leading-none">
-                    ATELIER
+                    <EditableText
+                      value={global.brandName || 'ATELIER'}
+                      isBuilder={isBuilder}
+                      onCommit={(v) => commitGlobal('brandName', v)}
+                    />
                   </div>
                   <div className="text-[11px] text-[#6E6359] mt-1">
-                    {global.brandMonogram || 'Madera & Materia'}
+                    <EditableText
+                      value={global.brandMonogram || 'Madera & Materia'}
+                      isBuilder={isBuilder}
+                      onCommit={(v) => commitGlobal('brandMonogram', v)}
+                    />
                   </div>
                 </div>
               </>
             )}
-          </a>
+          </div>
 
           <nav
             aria-label="Navegación principal"
             className="hidden md:flex items-center gap-8 text-[14px] text-[#3F3831]"
           >
-            {(navigation.headerLinks || [])
-              .filter((l: any) => l.isVisible !== false)
-              .map((lnk: any) => (
+            {(navigation.headerLinks || []).map((lnk: any, lIdx: number) =>
+              lnk.isVisible === false ? null : (
                 <a
                   key={lnk.id || lnk.label}
                   href={lnk.href}
                   onClick={(e) => handleAnchorNavigate(lnk.href, e)}
                   className="hover:text-[#171412] transition-colors"
                 >
-                  {lnk.label}
+                  <EditableText
+                    value={lnk.label}
+                    isBuilder={isBuilder}
+                    onCommit={(v) => commitNavLink(lIdx, 'label', v)}
+                  />
                 </a>
-              ))}
+              ),
+            )}
           </nav>
 
           <div className="flex items-center gap-2.5">
@@ -2314,7 +2930,11 @@ export function ClientSiteRenderer({
               style={{ backgroundColor: global.espressoColor || '#171412' }}
               className="h-11 px-5 text-[#F5F2EB] text-[13px] font-medium inline-flex items-center gap-2 hover:opacity-90 transition-opacity"
             >
-              <span>{navigation.headerCtaText || 'Encargar pieza'}</span>
+              <EditableText
+                value={navigation.headerCtaText || 'Encargar pieza'}
+                isBuilder={isBuilder}
+                onCommit={(v) => commitNav('headerCtaText', v)}
+              />
               <ArrowUpRight className="w-3.5 h-3.5" strokeWidth={1.5} />
             </a>
 
@@ -2353,20 +2973,36 @@ export function ClientSiteRenderer({
         ) : null}
       </header>
 
-      {/* Optional Promotional Campaign Banner from CMS */}
+      {/* Optional Promotional Campaign Banner from CMS (100% Inline Editable) */}
       {navigation.promoBanner?.enabled ? (
         <div className="bg-[#9E5936] text-[#F5F2EB] px-5 py-3">
           <div className="max-w-[1440px] mx-auto flex flex-wrap items-center justify-between gap-3 text-[13px]">
             <div>
-              <span className="font-semibold mr-2">{navigation.promoBanner.title}:</span>
-              <span>{navigation.promoBanner.description}</span>
+              <span className="font-semibold mr-2">
+                <EditableText
+                  value={navigation.promoBanner.title || 'Campaña'}
+                  isBuilder={isBuilder}
+                  onCommit={(v) => commitPromoBanner('title', v)}
+                />
+                :
+              </span>
+              <EditableText
+                value={navigation.promoBanner.description || ''}
+                isBuilder={isBuilder}
+                onCommit={(v) => commitPromoBanner('description', v)}
+              />
             </div>
             {navigation.promoBanner.ctaText ? (
               <a
                 href={navigation.promoBanner.ctaHref || '#cotizar'}
                 className="underline font-medium"
               >
-                {navigation.promoBanner.ctaText} →
+                <EditableText
+                  value={navigation.promoBanner.ctaText}
+                  isBuilder={isBuilder}
+                  onCommit={(v) => commitPromoBanner('ctaText', v)}
+                />{' '}
+                →
               </a>
             ) : null}
           </div>
@@ -2607,58 +3243,105 @@ export function ClientSiteRenderer({
       ) : null}
 
       {/* ===================================================================== */}
-      {/* MONUMENTAL FULL-BLEED ARCHITECTURAL FOOTER (Blueprint: footer)        */}
+      {/* MONUMENTAL FULL-BLEED ARCHITECTURAL FOOTER (100% Inline Editable)     */}
       {/* ===================================================================== */}
       <footer className="relative w-full min-h-[78svh] bg-[#171412] text-[#F5F2EB] flex flex-col justify-between overflow-hidden">
-        <img
-          src="https://images.unsplash.com/photo-1581539250439-c96689b516dd?auto=format&fit=crop&w=2000&q=80"
-          alt="Taller de ebanistería Atelier"
-          width={2000}
-          height={1100}
-          loading="lazy"
-          className="absolute inset-0 w-full h-full object-cover brightness-[0.38] pointer-events-none"
-        />
+        <div className="absolute inset-0 w-full h-full">
+          <EditableImage
+            src={
+              global.footerImageUrl ||
+              'https://images.unsplash.com/photo-1581539250439-c96689b516dd?auto=format&fit=crop&w=2000&q=80'
+            }
+            alt="Taller de ebanistería Atelier"
+            width={2000}
+            height={1100}
+            isBuilder={isBuilder}
+            projectId={payload?.project?.id}
+            buttonLabel="Cambiar foto fondo footer (.webp)"
+            onCommit={(url) => commitGlobal('footerImageUrl', url)}
+            className="w-full h-full object-cover brightness-[0.38]"
+          />
+        </div>
 
         {/* Top Row: Links on Left, Workshop Details on Right */}
         <div className="relative z-10 max-w-[1440px] w-full mx-auto px-5 sm:px-10 lg:px-14 pt-12 sm:pt-16 grid grid-cols-1 md:grid-cols-12 gap-10">
           <div className="md:col-span-5 space-y-4">
             {global.logoLightUrl ? (
-              <img
-                src={global.logoLightUrl}
-                alt={global.brandName}
-                className="h-10 w-auto object-contain"
-              />
+              <div className="h-10 w-auto flex items-center">
+                <EditableImage
+                  src={global.logoLightUrl}
+                  alt={global.brandName}
+                  isBuilder={isBuilder}
+                  projectId={payload?.project?.id}
+                  buttonLabel="Cambiar logo claro"
+                  onCommit={(url) => commitGlobal('logoLightUrl', url)}
+                  className="h-10 w-auto object-contain"
+                />
+              </div>
             ) : (
               <div className="flex items-center gap-3">
                 <AtelierEmblem dark className="w-9 h-9" />
-                <span className="font-serif text-lg tracking-[0.16em]">ATELIER</span>
+                <span className="font-serif text-lg tracking-[0.16em]">
+                  <EditableText
+                    value={global.brandName || 'ATELIER'}
+                    isBuilder={isBuilder}
+                    onCommit={(v) => commitGlobal('brandName', v)}
+                  />
+                </span>
               </div>
             )}
             <p className="text-[15px] text-[#E8DFD1]/85 max-w-sm leading-relaxed">
-              {global.brandMonogram || 'Ebanistería arquitectónica en madera maciza'}
+              <EditableText
+                value={global.brandMonogram || 'Ebanistería arquitectónica en madera maciza'}
+                isBuilder={isBuilder}
+                onCommit={(v) => commitGlobal('brandMonogram', v)}
+              />
             </p>
           </div>
 
           <div className="md:col-span-3 space-y-2 text-[15px]">
-            {(navigation.headerLinks || [])
-              .filter((l: any) => l.isVisible !== false)
-              .map((lnk: any) => (
+            {(navigation.headerLinks || []).map((lnk: any, lIdx: number) =>
+              lnk.isVisible === false ? null : (
                 <div key={lnk.id || lnk.label}>
                   <a
                     href={lnk.href}
+                    onClick={(e) => handleAnchorNavigate(lnk.href, e)}
                     className="text-[#E8DFD1]/85 hover:text-white transition-colors"
                   >
-                    {lnk.label}
+                    <EditableText
+                      value={lnk.label}
+                      isBuilder={isBuilder}
+                      onCommit={(v) => commitNavLink(lIdx, 'label', v)}
+                    />
                   </a>
                 </div>
-              ))}
+              ),
+            )}
           </div>
 
           <div className="md:col-span-4 space-y-2 text-[15px] text-[#E8DFD1]/90">
-            <div className="font-medium text-white">Showroom &amp; Taller Principal</div>
-            <div>{global.footerAddress}</div>
-            {global.footerHours ? (
-              <div className="text-[#C4B9AA] text-[14px]">{global.footerHours}</div>
+            <div className="font-medium text-white">
+              <EditableText
+                value={global.footerHeading || 'Showroom & Taller Principal'}
+                isBuilder={isBuilder}
+                onCommit={(v) => commitGlobal('footerHeading', v)}
+              />
+            </div>
+            <div>
+              <EditableText
+                value={global.footerAddress || 'Calle 79B # 7-45, El Nogal · Bogotá D.C.'}
+                isBuilder={isBuilder}
+                onCommit={(v) => commitGlobal('footerAddress', v)}
+              />
+            </div>
+            {global.footerHours || isBuilder ? (
+              <div className="text-[#C4B9AA] text-[14px]">
+                <EditableText
+                  value={global.footerHours || 'Lunes a Sábado · 10:00 a.m. a 7:00 p.m.'}
+                  isBuilder={isBuilder}
+                  onCommit={(v) => commitGlobal('footerHours', v)}
+                />
+              </div>
             ) : null}
             <div className="pt-2">
               <a
@@ -2667,7 +3350,12 @@ export function ClientSiteRenderer({
                 rel="noreferrer"
                 className="underline underline-offset-4 text-white"
               >
-                WhatsApp: {global.whatsappNumber}
+                WhatsApp:{' '}
+                <EditableText
+                  value={global.whatsappNumber || '+573148901234'}
+                  isBuilder={isBuilder}
+                  onCommit={(v) => commitGlobal('whatsappNumber', v)}
+                />
               </a>
             </div>
           </div>
@@ -2675,18 +3363,37 @@ export function ClientSiteRenderer({
 
         {/* Bottom Row: Monumental Edge-to-Edge Wordmark + Legal Line */}
         <div className="relative z-10 max-w-[1440px] w-full mx-auto px-5 sm:px-10 lg:px-14 pb-8 pt-20">
-          <div
-            aria-hidden="true"
-            className="font-serif text-[clamp(4.2rem,17.5vw,15.5rem)] leading-[0.82] tracking-[0.04em] text-[#F5F2EB]/95 select-none"
-          >
-            ATELIER
+          <div className="font-serif text-[clamp(4.2rem,17.5vw,15.5rem)] leading-[0.82] tracking-[0.04em] text-[#F5F2EB]/95 select-none">
+            <EditableText
+              value={global.footerWordmark || 'ATELIER'}
+              isBuilder={isBuilder}
+              onCommit={(v) => commitGlobal('footerWordmark', v)}
+            />
           </div>
           <div className="mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[13px] text-[#C4B9AA]">
             <span>
-              © {new Date().getFullYear()} {global.brandName}. Madera certificada de origen
-              responsable.
+              © {new Date().getFullYear()}{' '}
+              <EditableText
+                value={global.brandName || 'Atelier · Madera & Materia'}
+                isBuilder={isBuilder}
+                onCommit={(v) => commitGlobal('brandName', v)}
+              />
+              .{' '}
+              <EditableText
+                value={
+                  global.footerLegal || 'Madera certificada de origen responsable.'
+                }
+                isBuilder={isBuilder}
+                onCommit={(v) => commitGlobal('footerLegal', v)}
+              />
             </span>
-            <span>Bogotá D.C. · Medellín · Colombia</span>
+            <span>
+              <EditableText
+                value={global.footerCities || 'Bogotá D.C. · Medellín · Colombia'}
+                isBuilder={isBuilder}
+                onCommit={(v) => commitGlobal('footerCities', v)}
+              />
+            </span>
           </div>
         </div>
       </footer>
