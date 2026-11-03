@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" fill="#171412"/>
+  <!-- Vertical mortise pillar (Raw Oak) -->
+  <path d="M14 12H26V52H14V12Z" fill="#E8DFD1"/>
+  <!-- Interlocking angled tenon beam (Oiled Walnut) -->
+  <path d="M26 24H50V36H26V24Z" fill="#A66A46"/>
+  <!-- Architectural dovetail lock (Raw Oak right pillar) -->
+  <path d="M38 12H50V24H38V12ZM38 36H50V52H38V36Z" fill="#E8DFD1"/>
+  <!-- Precision joint shadow line -->
+  <rect x="26" y="24" width="2" height="12" fill="#171412"/>
+</svg>
