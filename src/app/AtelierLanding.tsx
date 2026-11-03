@@ -122,6 +122,7 @@ export function ClientSiteRenderer({ projectSlug = '' }: { projectSlug?: string 
   // Gallery Filter & Technical Spec Drawer
   const [woodFilter, setWoodFilter] = useState<string>('TODOS');
   const [selectedPiece, setSelectedPiece] = useState<any | null>(null);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Horizontal Process Rail Progress (0..1)
   const [railProgress, setRailProgress] = useState(0.2);
@@ -256,10 +257,92 @@ export function ClientSiteRenderer({ projectSlug = '' }: { projectSlug?: string 
     );
   }, [activeWood, tableLengthCm]);
 
+  const orderedSections: any[] = useMemo(() => {
+    const rawList =
+      Array.isArray(payload?.sectionsList) && payload.sectionsList.length > 0
+        ? payload.sectionsList
+        : Array.isArray(payload?.pages?.[0]?.sectionsList) &&
+          payload.pages[0].sectionsList.length > 0
+        ? payload.pages[0].sectionsList
+        : null;
+
+    if (rawList) {
+      return rawList.filter((s: any) => s.isVisible !== false);
+    }
+
+    const secMap =
+      payload?.sections && Object.keys(payload.sections).length > 0
+        ? payload.sections
+        : payload?.pages?.[0]?.sections || {};
+
+    const mapped = Object.entries(secMap).map(([key, data], idx) => ({
+      id: `sec-${key}`,
+      key,
+      name: key.toUpperCase(),
+      order: idx,
+      isVisible: true,
+      data,
+    }));
+
+    if (mapped.length > 0) return mapped;
+
+    return [
+      { id: 'sec-hero', key: 'hero', name: 'HERO', order: 0, isVisible: true, data: {} },
+      {
+        id: 'sec-oficio',
+        key: 'propuesta_valor',
+        name: 'EL OFICIO',
+        order: 1,
+        isVisible: true,
+        data: {},
+      },
+      {
+        id: 'sec-maderas',
+        key: 'muestrario_maderas',
+        name: 'MADERAS',
+        order: 2,
+        isVisible: true,
+        data: {},
+      },
+      {
+        id: 'sec-coleccion',
+        key: 'coleccion_destacada',
+        name: 'COLECCIÓN',
+        order: 3,
+        isVisible: true,
+        data: {},
+      },
+      {
+        id: 'sec-proceso',
+        key: 'proceso_taller',
+        name: 'PROCESO',
+        order: 4,
+        isVisible: true,
+        data: {},
+      },
+      {
+        id: 'sec-espacios',
+        key: 'espacios_showroom',
+        name: 'SHOWROOMS',
+        order: 5,
+        isVisible: true,
+        data: {},
+      },
+      {
+        id: 'sec-cotizar',
+        key: 'cotizacion_medida',
+        name: 'A MEDIDA',
+        order: 6,
+        isVisible: true,
+        data: {},
+      },
+    ];
+  }, [payload]);
+
   // Master GSAP + ScrollTrigger Choreography
   useGSAP(
     () => {
-      if (loading || !payload) return;
+      if (loading || !payload || orderedSections.length === 0) return;
       const prefersReduced =
         typeof window !== 'undefined' &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -308,8 +391,9 @@ export function ClientSiteRenderer({ projectSlug = '' }: { projectSlug?: string 
               ease: 'power3.out',
               scrollTrigger: {
                 trigger: sec,
-                start: 'top 84%',
+                start: 'top 88%',
                 toggleActions: 'play none none none',
+                fastScrollEnd: true,
               },
             },
           );
@@ -339,7 +423,7 @@ export function ClientSiteRenderer({ projectSlug = '' }: { projectSlug?: string 
         ScrollTrigger.refresh();
       }, 250);
     },
-    { dependencies: [loading, payload?.project?.id, woodFilter], scope: rootRef },
+    { dependencies: [loading, payload?.project?.id, orderedSections.length], scope: rootRef },
   );
 
   const emitCanvasAction = (action: string, data: Record<string, any> = {}) => {
@@ -401,21 +485,6 @@ export function ClientSiteRenderer({ projectSlug = '' }: { projectSlug?: string 
       ctaHref: '#cotizar',
     },
   };
-
-  const orderedSections: any[] = useMemo(() => {
-    if (Array.isArray(payload?.sectionsList) && payload.sectionsList.length > 0) {
-      return payload.sectionsList.filter((s: any) => s.isVisible !== false);
-    }
-    const secMap = payload?.sections || {};
-    return Object.entries(secMap).map(([key, data], idx) => ({
-      id: `sec-${key}`,
-      key,
-      name: key.toUpperCase(),
-      order: idx,
-      isVisible: true,
-      data,
-    }));
-  }, [payload]);
 
   const piecesCollection: any[] =
     payload?.collections?.['piezas-mobiliario'] ||
@@ -880,7 +949,7 @@ export function ClientSiteRenderer({ projectSlug = '' }: { projectSlug?: string 
             backgroundColor: style.backgroundColor || '#EAE4D8',
             color: style.textColor || '#171412',
           }}
-          className="gsap-section-trigger py-24 lg:py-36"
+          className="gsap-section-trigger scroll-mt-20 py-24 lg:py-36"
         >
           <div className="max-w-[1440px] mx-auto px-5 sm:px-10 lg:px-14 mb-14 lg:mb-16">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-end">
@@ -1061,7 +1130,7 @@ export function ClientSiteRenderer({ projectSlug = '' }: { projectSlug?: string 
             backgroundColor: style.backgroundColor || '#F5F2EB',
             color: style.textColor || '#171412',
           }}
-          className="gsap-section-trigger py-24 lg:py-36 px-5 sm:px-10 lg:px-14"
+          className="gsap-section-trigger scroll-mt-20 py-24 lg:py-36 px-5 sm:px-10 lg:px-14"
         >
           <div className="max-w-[1440px] mx-auto space-y-14">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-end">
@@ -1326,7 +1395,7 @@ export function ClientSiteRenderer({ projectSlug = '' }: { projectSlug?: string 
             backgroundColor: style.backgroundColor || '#F5F2EB',
             color: style.textColor || '#171412',
           }}
-          className="gsap-section-trigger py-24 lg:py-36 px-5 sm:px-10 lg:px-14"
+          className="gsap-section-trigger scroll-mt-20 py-24 lg:py-36 px-5 sm:px-10 lg:px-14"
         >
           <div className="max-w-[1440px] mx-auto space-y-16">
             <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
@@ -1525,7 +1594,7 @@ export function ClientSiteRenderer({ projectSlug = '' }: { projectSlug?: string 
             backgroundColor: style.backgroundColor || '#EAE4D8',
             color: style.textColor || '#171412',
           }}
-          className="gsap-section-trigger py-24 lg:py-36 overflow-hidden"
+          className="gsap-section-trigger scroll-mt-20 py-24 lg:py-36 overflow-hidden"
         >
           <div className="max-w-[1440px] mx-auto px-5 sm:px-10 lg:px-14 space-y-8">
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
@@ -1654,7 +1723,7 @@ export function ClientSiteRenderer({ projectSlug = '' }: { projectSlug?: string 
             backgroundColor: style.backgroundColor || '#F5F2EB',
             color: style.textColor || '#171412',
           }}
-          className="gsap-section-trigger py-24 lg:py-36 px-5 sm:px-10 lg:px-14"
+          className="gsap-section-trigger scroll-mt-20 py-24 lg:py-36 px-5 sm:px-10 lg:px-14"
         >
           <div className="max-w-[1440px] mx-auto space-y-16">
             <div className="max-w-3xl space-y-4">
@@ -1828,7 +1897,7 @@ export function ClientSiteRenderer({ projectSlug = '' }: { projectSlug?: string 
             backgroundColor: style.backgroundColor || '#171412',
             color: style.textColor || '#F5F2EB',
           }}
-          className="gsap-section-trigger py-24 lg:py-36 px-5 sm:px-10 lg:px-14"
+          className="gsap-section-trigger scroll-mt-20 py-24 lg:py-36 px-5 sm:px-10 lg:px-14"
         >
           <div className="max-w-[1440px] mx-auto">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
@@ -2194,7 +2263,7 @@ export function ClientSiteRenderer({ projectSlug = '' }: { projectSlug?: string 
               ))}
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <a
               href={navigation.headerCtaHref || '#cotizar'}
               onClick={() => trackClick('cta_click')}
@@ -2204,8 +2273,37 @@ export function ClientSiteRenderer({ projectSlug = '' }: { projectSlug?: string 
               <span>{navigation.headerCtaText || 'Encargar pieza'}</span>
               <ArrowUpRight className="w-3.5 h-3.5" strokeWidth={1.5} />
             </a>
+
+            <button
+              type="button"
+              onClick={() => setMobileNavOpen((prev) => !prev)}
+              aria-label="Abrir menú de navegación"
+              className="md:hidden h-11 px-3.5 bg-[#EAE4D8] text-[#171412] text-[13px] font-medium inline-flex items-center justify-center"
+            >
+              {mobileNavOpen ? 'Cerrar' : 'Menú'}
+            </button>
           </div>
         </div>
+
+        {mobileNavOpen ? (
+          <nav
+            aria-label="Navegación móvil"
+            className="md:hidden bg-[#FCFBF8] px-5 py-4 flex flex-col gap-3 text-[15px] text-[#171412]"
+          >
+            {(navigation.headerLinks || [])
+              .filter((l: any) => l.isVisible !== false)
+              .map((lnk: any) => (
+                <a
+                  key={lnk.id || lnk.label}
+                  href={lnk.href}
+                  onClick={() => setMobileNavOpen(false)}
+                  className="py-1.5 font-medium hover:text-[#9E5936] transition-colors"
+                >
+                  {lnk.label}
+                </a>
+              ))}
+          </nav>
+        ) : null}
       </header>
 
       {/* Optional Promotional Campaign Banner from CMS */}
